@@ -1,0 +1,39 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1404\cocoasubrtf470
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\info
+{\author J.Goedhart}
+{\*\company SILS/UvA}}\paperw11900\paperh16840\margl1440\margr1440\vieww10800\viewh8400\viewkind0
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+
+\f0\b\fs24 \cf0 Readme.
+\b0 \
+\
+The ComPlotta* Shiny app plots the data and statistics to enable the comparison of (experimental) conditions. The philosophy of the approach is that plotting the raw data (instead of a summary) improves transparency and interpretation (see also {\field{\*\fldinst{HYPERLINK "http://thenode.biologists.com/leaving-bar-five-steps/"}}{\fldrslt this blog}}). To further facilitate the comparison summary statistics (mean, median, boxplot) and inferential statistics (confidence intervals) can be added. The user has full control over the visibility of the raw data and statistics by adjustment of the transparency (alpha).\
+\
+The data can be supplied in spreadsheet/long format (e.g. by copy-pasting from excel) or in tidy format. For more information on the conversion of spreadsheet data to tidy data see {\field{\*\fldinst{HYPERLINK "http://thenode.biologists.com/converting-excellent-spreadsheets-tidy-data/education/"}}{\fldrslt this blog}}.\
+\
+The plot can be saved as a PDF file, which can be opened and edited with Adobe Illustrator to allow for fine adjustments to the lay-out.\
+\
+The ComPlotta Shiny app is inspired by {\field{\*\fldinst{HYPERLINK "http://shiny.chemgrid.org/boxplotr/"}}{\fldrslt BoxPlotR}} (see also {\field{\*\fldinst{HYPERLINK "http://blogs.nature.com/methagora/2014/01/bring-on-the-box-plots-boxplotr.html"}}{\fldrslt this blog}}).\
+The code for the shiny app is partially derived from {\field{\*\fldinst{HYPERLINK "https://github.com/gertstulp/ggplotgui"}}{\fldrslt ggplotGUI}} by {\field{\*\fldinst{HYPERLINK "https://www.gertstulp.com"}}{\fldrslt Gert Stulp}}\
+\
+\
+* ComPlotta: COMparison by PLOTting the daTA\
+\
+
+\b Known issues
+\b0 :\
+Tidy data is accepted, but it is assumed that the first column is \'93Condition\'94 and the second column is \'93Value\'94.\
+\
+\
+
+\b Future improvements/additions
+\b0 :\
+\
+Repair 95%CI for Boxplot\
+Define a \'91Control\'92 condition\
+Add differences (effect size)\
+\'97\'97\'97\'97\'97\
+Add p-values to summary table\
+Add effect size to table}
