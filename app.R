@@ -25,7 +25,8 @@ upper_percentile=1-((1-Confidence_level)/2)
 
 
 #Read a text file (comma separated values)
-df_wide <- read.csv("Data_wide.csv", na.strings = "")
+df_wide_example <- read.csv("Data_wide_example.csv", na.strings = "")
+df_tidy_example <- read.csv("Data_tidy_example.csv", na.strings = "")
 
 ui <- fluidPage(
   titlePanel("ComPlotta - Comparison by Plotting the Data"),
@@ -112,17 +113,18 @@ ui <- fluidPage(
         radioButtons(
           "data_input", "",
           choices = 
-            list("Load sample data" = 1,
-                 "Upload file" = 2,
-                 "Paste data" = 3)
+            list("Example 1 (wide format)" = 1,
+                 "Example 2 (tidy format)" = 2,
+                 "Upload file" = 3,
+                 "Paste data" = 4)
           ,
-          selected =  3),
+          selected =  4),
         conditionalPanel(
           condition = "input.data_input=='1'"
           
         ),
         conditionalPanel(
-          condition = "input.data_input=='2'",
+          condition = "input.data_input=='3'",
           h5("Upload file: "),
           fileInput("upload", "", multiple = FALSE),
           selectInput("file_type", "Type of file:",
@@ -145,7 +147,7 @@ ui <- fluidPage(
           actionButton("submit_datafile_button",
                        "Submit datafile")),
         conditionalPanel(
-          condition = "input.data_input=='3'",
+          condition = "input.data_input=='4'",
           h5("Paste data below:"),
           tags$textarea(id = "data_paste",
                         placeholder = "Add data here",
@@ -216,8 +218,10 @@ server <- function(input, output, session) {
   
   df_upload <- reactive({
     if (input$data_input == 1) {
-      data <- df_wide
-    } else if (input$data_input == 2) {
+      data <- df_wide_example
+    }  else if (input$data_input == 2) {
+        data <- df_tidy_example 
+    } else if (input$data_input == 3) {
       file_in <- input$upload
       # Avoid error message while file is not uploaded yet
       if (is.null(input$upload)) {
@@ -235,7 +239,7 @@ server <- function(input, output, session) {
           } 
         })
       }
-    } else if (input$data_input == 3) {
+    } else if (input$data_input == 4) {
       if (input$data_paste == "") {
         data <- data.frame(x = "Copy your data into the textbox,
                            select the appropriate delimiter, and
