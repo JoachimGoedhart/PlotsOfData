@@ -6,6 +6,10 @@ library(readr)
 library(magrittr)
 library(ggbeeswarm)
 
+##### ToDo
+##### Clean up the code -> rename df_tidy and df_tidy_temp
+##### Add jitter option back
+
 
 
 samplemedian <- function (x, d) {
@@ -38,7 +42,7 @@ ui <- fluidPage(
         checkboxInput(inputId = "no_jitter",
                       label = "No Jitter (for small n)",
                       value = FALSE),
-        selectInput("var_list", "Colour:", choices = ""),
+        selectInput("colour_list", "Colour:", choices = ""),
         
         # conditionalPanel(
         #   condition = "input.adjust_jitter == true",
@@ -170,15 +174,16 @@ ui <- fluidPage(
           h5("",
              a("Click here for more info on tidy data",
                href = "http://thenode.biologists.com/converting-excellent-spreadsheets-tidy-data/education/")),
+          selectInput("x_var", "Conditions to compare:", choices = ""),
           selectInput("y_var", "Variables:", choices = "")
           
           )
       ),
       
-      # conditionalPanel(
-      #   condition = "input.tabs=='About'",
-      #   h4("About")    
-      # ),
+      conditionalPanel(
+        condition = "input.tabs=='About'",
+        h4("About")    
+      ),
       
       conditionalPanel(
         condition = "input.tabs=='Data Summary'",
@@ -210,11 +215,6 @@ server <- function(input, output, session) {
   ###### DATA INPUT ####### ###########
   #####################################
   
-  ######
-  ### Need to implement the conversion of a tidy-data set to dataframe that can be used for plotting
-  ### Ithink I will need select and the input of a string
-  #df_tidy_ITSN %>% select (Condition=ratio, Value = Value)
-  #df_tidy_ITSN %>% select(Condition= !!var1, Value = !!var2)
   
   df_upload <- reactive({
     if (input$data_input == 1) {
@@ -258,44 +258,78 @@ server <- function(input, output, session) {
   }
     return(data)
 })
+
+ ####################################
+##### CONVERT TO TIDY DATA ##########
+ ###################################
   
 #Need to tidy the data?!
-  df_tidy_temp <- reactive({
+#Untidy data will be converted to long format with two columns named 'Condition' and 'Value'
+#The input for "Condition" will be taken from the header, i.e. first row
+#Tidy data will be used as supplied
+df_tidy_temp <- reactive({
     if(input$tidyInput == FALSE ) {
       klaas <- gather(df_upload(), Condition, Value)
     }
     else if(input$tidyInput == TRUE ) {
       klaas <- df_upload()
- #     klaas <- df_upload() %>% mutate (Value = input$var)
-      ##### Change column name that is selected by input$var to "Value"
-      
     }
     })
   
 
-#################### GET a List of variables that can be used for colour ################
+ ####################################
+##### Get the Variables ##############
+ ###################################  
+
 observe({ 
         var_names  <- names(df_tidy_temp())
         var_list <- c("none", var_names)
-        updateSelectInput(session, "var_list", choices = var_list)
+        updateSelectInput(session, "colour_list", choices = var_list)
         updateSelectInput(session, "y_var", choices = var_list)
+        updateSelectInput(session, "x_var", choices = var_list)})
+  
+  
+df_tidy <- reactive({
+    if(input$tidyInput == TRUE ) {
+    klaas_temp <- df_tidy_temp() 
+    x_choice <- input$x_var
+    y_choice <- input$y_var
+    
+    if (input$colour_list == "none") {
+      kleur <- NULL
+    } else if (input$colour_list != "none") {
+      kleur <- as.character(input$colour_list)
+    }  
+    observe({ print(kleur)})
+    koos <- klaas_temp %>% select(Condition = !!x_choice , Value = !!y_choice)
+    
+    observe({ print(head(koos)) })
+    return(koos)
+ 
+    } else if (input$tidyInput == FALSE ) {
+      klaas_temp <- df_tidy_temp() 
+      
+      if (input$colour_list == "none") {
+        kleur <- NULL
+      } else if (input$colour_list != "none") {
+        kleur <- as.character(input$colour_list)
+      }  
+      
+      observe({ print(kleur)})
+      koos <- klaas_temp %>% select (Condition = Condition , Value = Value)
+
+      observe({ print(head(koos)) })
+      return(koos)
+      
+    
+      }
 })
   
   
-  df_tidy <- reactive({
-    klaas <- df_tidy_temp() 
-#    y_choice <- as.character(input$y_var)
- #   observe({ print(y_choice)})
-  #    koos <- klaas %>% mutate_(Value, y_choice)
-   # observe({ print(head(koos)) })
-  #  return(koos)
-})
   
-  
-  
-###########################################
-#### DISPLAY UPLOADED DATA ####
-###########################################
+ ###########################################
+#### DISPLAY UPLOADED DATA ##################
+ ###########################################
     
 output$data_uploaded <- renderDataTable({
     
@@ -304,9 +338,9 @@ output$data_uploaded <- renderDataTable({
   })
   
 
-###########################################
-#### DISPLAY Summary of the DATA ####
-###########################################
+ ###########################################
+#### DISPLAY Summary of the DATA ###########
+ ###########################################
 
 output$data_summary <- renderTable({
 #    df_summary()
@@ -321,9 +355,9 @@ output$data_summary <- renderTable({
 })
 
 
-###########################################
+ ##################################################
 #### Caluclate Summary of the DATA for the MEAN ####
-###########################################
+ #################################################
 
 
 df_summary <- reactive({
@@ -347,9 +381,9 @@ df_summary <- reactive({
   
   })  
   
-###########################################
+ ####################################################
 #### Caluclate Summary of the DATA for the Median ####
-###########################################  
+ ###################################################
 
 
 df_booted_summary <- reactive({
@@ -383,9 +417,9 @@ df_booted_summary <- reactive({
   })
   
   
-###########################################
-#### DEFINE DOWNLOAD BUTTON ####
-###########################################
+ ###########################################
+######### DEFINE DOWNLOAD BUTTON ###########
+ ###########################################
 
 output$downloadPlotPDF <- downloadHandler(
   filename <- function() {
@@ -403,22 +437,40 @@ width <- reactive ({ input$plot_width })
 height <- reactive ({ input$plot_height })
 
 
-###########################################
-#### PREPARE PLOT FOR DISPLAY ####
-###########################################
+ ###########################################
+######## PREPARE PLOT FOR DISPLAY ##########
+ ###########################################
 
 output$coolplot <- renderPlot(width = width,
                               height = height,{
 
-
-    #### Command to prepare the plot ####
-    observe({ print(class(input$var_list)) })
-                                
-    if (input$var_list == "none") {
+    observe({ print(class(input$colour_list)) })
+    if (input$colour_list == "none") {
       kleur <- NULL
-    } else if (input$var_list != "none") {
-      kleur <- as.character(input$var_list)
-    }                          
+    } else if (input$colour_list != "none") {
+      kleur <- as.character(input$colour_list)
+    }
+
+ ########################################################################
+########## Set default to Plotting "Condition" and "Value" ##############
+########################################################################
+if (input$x_var == "none") {
+  x_choice <- "Condition"
+} else if (input$x_var != "none") {
+  x_choice <- as.character(input$x_var)
+}  
+
+if (input$y_var == "none") {
+  y_choice <- "Value"
+} else if (input$y_var != "none") {
+  y_choice <- as.character(input$y_var)
+}                          
+
+ ###############################################
+############## GENERATE PLOT LAYERS #############
+ ###############################################
+                                
+                                
     p <- ggplot(df_tidy(), aes_string(x="Condition"))
       
     #### plot selected data summary (1st layer) ####
@@ -454,7 +506,8 @@ output$coolplot <- renderPlot(width = width,
     }
 
     
-    
+    observe({ print(x_choice) })
+    observe({ print(y_choice) })    
     
     # #### plot individual measurements (2nd layer) ####
     # if (input$adjust_jitter == FALSE || input$random_jitter == TRUE) {
@@ -465,9 +518,9 @@ output$coolplot <- renderPlot(width = width,
     # }
 
     if (input$no_jitter == FALSE) {
-      p <- p + geom_quasirandom(data=df_tidy(), aes_string(x="Condition", y="Value", colour = kleur), varwidth = TRUE, cex=3, alpha=input$alphaInput)
+      p <- p + geom_quasirandom(data=df_tidy_temp(), aes_string(x=x_choice, y=y_choice, colour = kleur), varwidth = TRUE, cex=3, alpha=input$alphaInput)
     } else if (input$no_jitter == TRUE) {
-      p <- p + geom_jitter(data=df_tidy(), aes_string(x="Condition", y="Value", colour = kleur), width=0, height=0.0, cex=3, alpha=input$alphaInput)
+      p <- p + geom_jitter(data=df_tidy_temp(), aes_string(x=x_choice, y=y_choice, colour = kleur), width=0, height=0.0, cex=3, alpha=input$alphaInput)
     }  
         
 #    
