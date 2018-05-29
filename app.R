@@ -87,7 +87,12 @@ ui <- fluidPage(
         checkboxInput(inputId = "rotate_plot",
               label = "Rotate plot 90 degrees",
               value = FALSE),
-
+        
+        conditionalPanel(
+            condition = "input.colour_list != 'none'",
+        checkboxInput(inputId = "add_legend",
+              label = "Add legend",
+              value = FALSE)),
         h4("Labels"),
 
         checkboxInput(inputId = "add_title",
@@ -114,6 +119,8 @@ ui <- fluidPage(
               label = "Change font size",
               value = FALSE)
         ),
+
+
         conditionalPanel(
               condition = "input.adj_fnt_sz == true",
               numericInput("fnt_sz_ttl", "Size axis titles:", value = 24),
@@ -558,6 +565,11 @@ output$coolplot <- renderPlot(width = width, height = height, {
     if (input$adj_fnt_sz) {
       p <- p + theme(axis.text = element_text(size=input$fnt_sz_ax))
       p <- p + theme(axis.title = element_text(size=input$fnt_sz_ttl))
+    }
+     
+    #remove legend (if selected)
+    if (input$add_legend == FALSE) {  
+      p <- p + theme(legend.position="none")
     }
     
     ### Output the plot ######
