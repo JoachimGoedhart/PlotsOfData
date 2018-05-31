@@ -1,5 +1,5 @@
 ##############################################################################
-# Shiny app for plotting and comparing the data
+# PlotsOfData: Shiny app for plotting and comparing the data
 # Created by Joachim Goedhart (@joachimgoedhart), first version 2018
 # Takes non-tidy, spreadsheet type data as input or tidy format
 # Non-tidy data is converted into tidy format
@@ -47,7 +47,7 @@ df_tidy_example <- read.csv("Data_tidy_example.csv", na.strings = "")
 ###### Define the User interface #########
 
 ui <- fluidPage(
-  titlePanel("ComPlotta - Comparison by Plotting the Data"),
+  titlePanel("PlotsOfData - Comparison by Plotting the Data"),
   sidebarLayout(
     sidebarPanel(width=3,
       conditionalPanel(
