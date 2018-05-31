@@ -22,9 +22,10 @@ library(ggbeeswarm)
 
 ################
 
-
-samplemedian <- function (x, d) {
-  return(median(x[d]))}
+#Function that resamples a vector (with replacement) and calculates the median value
+boot_median = function(x) {
+  median(sample(x, replace = TRUE))
+}
 
 i=0
 #Number of bootstrap samples
@@ -47,7 +48,7 @@ df_tidy_example <- read.csv("Data_tidy_example.csv", na.strings = "")
 ###### Define the User interface #########
 
 ui <- fluidPage(
-  titlePanel("PlotsOfData - Comparison by Plotting the Data"),
+  titlePanel("PlotsOfData - Plots all Of the Data"),
   sidebarLayout(
     sidebarPanel(width=3,
       conditionalPanel(
@@ -330,7 +331,7 @@ df_selected <- reactive({
       koos <- koos %>% mutate(Condition = reorder(Condition, Value, median))
     }
   
-    observe({ print(head(koos)) })
+#    observe({ print(head(koos)) })
   
     return(koos)
       
@@ -397,6 +398,7 @@ df_summary_median <- reactive({
       #Add the new median to a datafram that collects all the resampled median values
       df_new_medians <- bind_rows(df_new_medians, df_boostrapped_median)
     }
+    
     
     if(input$ordered == TRUE) {
     df_new_medians <- df_new_medians %>% mutate(Condition = reorder(Condition, resampled_median, median))
@@ -465,10 +467,10 @@ output$downloadPlotPNG <- downloadHandler(
  ###########################################
 
 output$coolplot <- renderPlot(width = width, height = height, {
-  
+
 
 ########## Define kleur
-    observe({ print(class(input$colour_list)) })
+#    observe({ print(class(input$colour_list)) })
     if (input$colour_list == "none") {
       kleur <- NULL
     } else if (input$colour_list != "none") {
@@ -496,8 +498,8 @@ output$coolplot <- renderPlot(width = width, height = height, {
     ### HACK TO GET RE-ORDERING ACCORDING TO MEDIAN RIGHT
     p <- p + geom_boxplot(data=df_selected(), aes(x=Condition, y=Value), alpha=0, fill=NA, size=0)
     
-    observe({ print(x_choice) })
-    observe({ print(y_choice) })    
+#    observe({ print(x_choice) })
+#    observe({ print(y_choice) })    
     
     # if (input$adjust_jitter == FALSE || input$random_jitter == TRUE) {
     #   #Remove the seed
