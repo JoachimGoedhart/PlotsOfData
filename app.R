@@ -39,6 +39,17 @@ alpha=1-Confidence_level
 lower_percentile=(1-Confidence_level)/2
 upper_percentile=1-((1-Confidence_level)/2)
 
+
+#Several qualitative color palettes that are colorblind friendly
+#From Paul Tol: https://personal.sron.nl/~pault/
+#Code to generate vectors in R to use these palettes
+
+#Red, Green, Blue, yellow, cyan, purple, grey
+Tol_bright <- c('#EE6677', '#228833', '#4477AA', '#CCBB44', '#66CCEE', '#AA3377', '#BBBBBB')
+Tol_muted <- c('#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677', '#882255', '#AA4499', '#332288', '#DDDDDD')
+Tol_light <- c('#BBCC33', '#AAAA00', '#77AADD', '#EE8866', '#EEDD88', '#FFAABB', '#99DDFF', '#44BB99', '#DDDDDD')
+
+
 #Read a text file (comma separated values)
 df_wide_example <- read.csv("Data_wide_example.csv", na.strings = "")
 df_tidy_example <- read.csv("Data_tidy_example.csv", na.strings = "")
@@ -53,7 +64,9 @@ ui <- fluidPage(
       conditionalPanel(
         condition = "input.tabs=='Plot'",
         radioButtons("jitter_type", "Data offset", choices = list("Beeswarm" = "beeswarm", "Random" = "random", "None (for small n)" = "none"), selected = "beeswarm"),
-        selectInput("colour_list", "Colour:", choices = ""),
+        
+        
+        
         sliderInput("alphaInput", "Visibility of the data", 0, 1, 0.3),
 
         # conditionalPanel(
@@ -66,6 +79,31 @@ ui <- fluidPage(
 #        sliderInput("Input_CI", "Confidence Level", 90, 100, 95),
         checkboxInput(inputId = "add_CI", label = HTML("Add 95% CI <br/> (unadvisable for n<10)"), value = FALSE),
         sliderInput("alphaInput_summ", "Visibility of the statistics", 0, 1, 1),
+
+
+########## Choose color from list
+selectInput("colour_list", "Colour:", choices = ""),
+
+
+checkboxInput("color_stats", "Use color for the stats", value=FALSE),
+radioButtons(
+  "adjustcolors", "Color palette:",
+  choices = 
+    list("Standard" = 1,"Colorblind safe (bright)" = 2,"Colorblind safe (muted)" = 3,"Colorblind safe (light)" = 4, "User defined"=5) , selected =  1),
+conditionalPanel(condition = "input.adjustcolors == 5",
+                 textInput("user_color_list", "List of names or hexadecimal codes", value = "turquoise2,#FF2222,lawngreen"), 
+                 
+                 h5("",
+                    a("Click here for more info on color names",
+                      href = "http://www.endmemo.com/program/R/color.php", target="_blank"))
+                 
+),
+
+
+
+
+##########
+
 
         h4("Plot Layout"),      
         numericInput("plot_height", "Height (# pixels): ", value = 480),
@@ -441,14 +479,47 @@ output$downloadPlotPNG <- downloadHandler(
 
 output$coolplot <- renderPlot(width = width, height = height, {
 
-########## Define kleur
-#    observe({ print(class(input$colour_list)) })
-    if (input$colour_list == "none") {
-      kleur <- NULL
-    } else if (input$colour_list != "none") {
-      kleur <- as.character(input$colour_list)
-    }
+  
+  ########## Define kleur
+  #    observe({ print(class(input$colour_list)) })
+  if (input$colour_list == "none") {
+    kleur <- NULL
+  } else if (input$colour_list != "none") {
+    kleur <- as.character(input$colour_list)
+  }
 
+  ########## Define if/how color is used for the stats ############
+  #    observe({ print(class(input$colour_list)) })
+  if (input$color_stats == FALSE) {
+    kleur_stats <- NULL
+  } else if (input$color_stats == TRUE) {
+    kleur_stats <- "Condition"
+  } 
+  
+  
+  ########## Define alternative color palettes ##########
+  
+  newColors <- NULL
+  
+  if (input$adjustcolors == 2) {
+    newColors <- Tol_bright
+  } else if (input$adjustcolors == 3) {
+    newColors <- Tol_muted
+  } else if (input$adjustcolors == 4) {
+    newColors <- Tol_light
+  } else if (input$adjustcolors == 5) {
+    newColors <- gsub("\\s","", strsplit(input$user_color_list,",")[[1]])
+  }
+  
+######## Repeat the colors, if number of colors < number of conditions
+  klaas <- df_selected()
+  max_colors <- nlevels(as.factor(klaas$Condition))
+  if(length(newColors) < max_colors) {
+    newColors<-rep(newColors,times=(round(max_colors/length(newColors)))+1)
+  }
+
+  
+  
 ########## Set default to Plotting "Condition" and "Value"
     if (input$x_var == "none") {
       x_choice <- "Condition"
@@ -490,28 +561,36 @@ output$coolplot <- renderPlot(width = width, height = height, {
     
     ##### plot selected data summary (2nd layer) ####
     
+    #%#%#%#%#%#%#%#%# DEZE IS OK VOOR DE STATS, NU REST NOG
+        
     if (input$summaryInput == "median"  && input$add_CI == TRUE) {
-    p <-  p + geom_point(data=df_summary_median(), aes(x=Condition, y = median), shape = 21,color = "black",fill=NA,size = 8,alpha=input$alphaInput_summ)+
-              geom_linerange(data=df_summary_median(), aes(ymin = ci_lo, ymax = ci_hi), color="black", size =3,alpha=input$alphaInput_summ)
+    p <-  p + geom_point(data=df_summary_median(), aes_string(x=x_choice, y = "median", colour=kleur_stats), shape = 21,fill=NA,size = 8,alpha=input$alphaInput_summ)+
+              geom_linerange(data=df_summary_median(), aes_string(ymin = "ci_lo", ymax = "ci_hi", colour=kleur_stats), size =3,alpha=input$alphaInput_summ)
     }
 
+    
+
     else if (input$summaryInput == "median"  && input$add_CI == FALSE) {
-      p <-  p + geom_errorbar(data=df_summary_median(), aes(x=Condition, ymin=median, ymax=median), width=.8, size=2, alpha=input$alphaInput_summ)
+      p <-  p + geom_errorbar(data=df_summary_median(), aes_string(x=x_choice, ymin="median", ymax="median", colour = kleur_stats), width=.8, size=2, alpha=input$alphaInput_summ)
+    
+    #%#%#%#%#%#%#%#%#
+      
+      
       
     } else if (input$summaryInput == "mean"  && input$add_CI == TRUE) {
-      p <- p + geom_linerange(data=df_summary_mean(), aes(ymin = ci_lo, ymax = ci_hi), color="black", size =3,alpha=input$alphaInput_summ)+
-        geom_point(data=df_summary_mean(), aes(y = mean), shape = 21,color = "black",fill=NA,size = 8,alpha=input$alphaInput_summ)
+      p <- p + geom_linerange(data=df_summary_mean(), aes_string(ymin = "ci_lo", ymax = "ci_hi", colour=kleur_stats), size =3,alpha=input$alphaInput_summ)+
+        geom_point(data=df_summary_mean(), aes_string(y = "mean", colour=kleur_stats), shape = 21,fill=NA,size = 8,alpha=input$alphaInput_summ)
 
     } else if (input$summaryInput == "mean"  && input$add_CI == FALSE) {
-      p <- p + geom_errorbar(data=df_summary_mean(), aes(x=Condition, ymin=mean, ymax=mean), width=.8, size=2, alpha=input$alphaInput_summ)
+      p <- p + geom_errorbar(data=df_summary_mean(), aes_string(x=x_choice, ymin="mean", ymax="mean", colour=kleur_stats), width=.8, size=2, alpha=input$alphaInput_summ)
       
     } else if (input$summaryInput == "boxplot" && min_n>9) {
-     p <- p + geom_errorbar(data=df_summary_mean(), aes(x=Condition, ymin=median, ymax=median), width=.2, size=2, alpha=0)+
-       geom_boxplot(data=df_selected(), aes(x=Condition, y=Value), fill = "grey50", notch = input$add_CI, outlier.color=NA, width=0.8, size=0.5, alpha=input$alphaInput_summ)
+     p <- p + geom_errorbar(data=df_summary_mean(), aes_string(x=x_choice, ymin="median", ymax="median"), width=.2, size=2, alpha=0)+
+       geom_boxplot(data=df_selected(), aes_string(x=x_choice, y="Value", fill=kleur_stats), notch = input$add_CI, outlier.color=NA, width=0.8, size=0.5, alpha=input$alphaInput_summ)
       
     } else if (input$summaryInput == "violin" && min_n>9) {
       p <- p + geom_errorbar(data=df_summary_mean(), aes(x=Condition, ymin=median, ymax=median), width=.2, size=2, alpha=0) +
-        geom_violin(data=df_selected(), aes(x=Condition, y=Value), draw_quantiles = c(0.5), fill = "grey50", width=0.8, size=0.5, alpha=input$alphaInput_summ) 
+        geom_violin(data=df_selected(), aes_string(x=x_choice, y="Value", fill=kleur_stats), draw_quantiles = c(0.5), width=0.8, size=0.5, alpha=input$alphaInput_summ) 
     }
 
 ########### Do some formatting of the lay-out
@@ -544,6 +623,11 @@ output$coolplot <- renderPlot(width = width, height = height, {
     if (input$add_legend == FALSE) {  
       p <- p + theme(legend.position="none")
     }
+     
+   if (input$adjustcolors >1) {
+       p <- p+ scale_color_manual(values=newColors)
+       p <- p+ scale_fill_manual(values=newColors)
+   }
     
     ### Output the plot ######
     p
