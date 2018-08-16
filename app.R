@@ -62,7 +62,7 @@ ui <- fluidPage(
         #   checkboxInput(inputId = "random_jitter", label = ("Randomize Jitter"), value = TRUE)
         # ),
           
-        radioButtons("summaryInput", "Statistics", choices = list("Median" = "median", "Mean" = "mean", "Boxplot" = "boxplot", "Violin Plot" = "violin"), selected = "median"),
+        radioButtons("summaryInput", "Statistics", choices = list("Median" = "median", "Mean" = "mean", "Boxplot (minimal n=10)" = "boxplot", "Violin Plot (minimal n=10)" = "violin"), selected = "median"),
 #        sliderInput("Input_CI", "Confidence Level", 90, 100, 95),
         checkboxInput(inputId = "add_CI", label = HTML("Add 95% CI <br/> (unadvisable for n<10)"), value = FALSE),
         sliderInput("alphaInput_summ", "Visibility of the statistics", 0, 1, 1),
@@ -130,7 +130,7 @@ ui <- fluidPage(
                  "Upload file" = 3,
                  "Paste data" = 4)
           ,
-          selected =  4),
+          selected =  1),
         conditionalPanel(
           condition = "input.data_input=='1'"
           
@@ -460,7 +460,13 @@ output$coolplot <- renderPlot(width = width, height = height, {
       y_choice <- "Value"
     } else if (input$y_var != "none") {
       y_choice <- as.character(input$y_var)
-    }                          
+    }
+
+  ########## Define minimal n - only plot box/violinplots for min_n>9
+  
+    
+    df_temp <- df_summary_median()
+    min_n <- min(df_temp$n)
 
  ###############################################
 ############## GENERATE PLOT LAYERS #############
@@ -499,11 +505,11 @@ output$coolplot <- renderPlot(width = width, height = height, {
     } else if (input$summaryInput == "mean"  && input$add_CI == FALSE) {
       p <- p + geom_errorbar(data=df_summary_mean(), aes(x=Condition, ymin=mean, ymax=mean), width=.8, size=2, alpha=input$alphaInput_summ)
       
-    } else if (input$summaryInput == "boxplot") {
+    } else if (input$summaryInput == "boxplot" && min_n>9) {
      p <- p + geom_errorbar(data=df_summary_mean(), aes(x=Condition, ymin=median, ymax=median), width=.2, size=2, alpha=0)+
        geom_boxplot(data=df_selected(), aes(x=Condition, y=Value), fill = "grey50", notch = input$add_CI, outlier.color=NA, width=0.8, size=0.5, alpha=input$alphaInput_summ)
       
-    } else if (input$summaryInput == "violin") {
+    } else if (input$summaryInput == "violin" && min_n>9) {
       p <- p + geom_errorbar(data=df_summary_mean(), aes(x=Condition, ymin=median, ymax=median), width=.2, size=2, alpha=0) +
         geom_violin(data=df_selected(), aes(x=Condition, y=Value), draw_quantiles = c(0.5), fill = "grey50", width=0.8, size=0.5, alpha=input$alphaInput_summ) 
     }
