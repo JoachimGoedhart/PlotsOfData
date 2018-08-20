@@ -14,8 +14,11 @@ The plot can be saved as a PDF file, which can be opened and edited with Adobe I
 ### Running the App
 
 Currently, the app can only run locally. For instance by using Rstudio:
+
 -download the app.R and csv files with example data.
+
 -Run RStudio and load app.R
+
 -Select 'Run All' (shortcut is command-option-R on a Mac) or click on "Run App" (upper right button on the window)
 
 This should launch a web browser with the Shiny app.
