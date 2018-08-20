@@ -9,6 +9,9 @@
 # Inferential statistics (95%CI) can be added
 # The 95%CI of the median is determined by resampling (bootstrap)
 # A plot and a table with stats are generated
+# Colors can be added to the data and/or the stats
+# Several colorblind safe palettes are available
+# Ordering of the categorial data is 'as is, based on median or alphabetical
 ##############################################################################
 
 library(shiny)
@@ -80,32 +83,37 @@ ui <- fluidPage(
         checkboxInput(inputId = "add_CI", label = HTML("Add 95% CI <br/> (unadvisable for n<10)"), value = FALSE),
         sliderInput("alphaInput_summ", "Visibility of the statistics", 0, 1, 1),
 
+        radioButtons(inputId = "ordered",
+             label= "Order of the data/statistics:",
+             choices = list("As supplied" = "none", "By median value" = "median", "By alphabet/number" = "alphabet"),
+             selected = "none"),
+        h4("Plot Layout"),      
 
-########## Choose color from list
-selectInput("colour_list", "Colour:", choices = ""),
+        checkboxInput(inputId = "rotate_plot",
+              label = "Rotate plot 90 degrees",
+              value = FALSE),
 
+        checkboxInput("color_data", "Use color for the data", value=FALSE),
+        checkboxInput("color_stats", "Use color for the stats", value=FALSE),
 
-checkboxInput("color_stats", "Use color for the stats", value=FALSE),
-radioButtons(
-  "adjustcolors", "Color palette:",
-  choices = 
-    list("Standard" = 1,"Colorblind safe (bright)" = 2,"Colorblind safe (muted)" = 3,"Colorblind safe (light)" = 4, "User defined"=5) , selected =  1),
-conditionalPanel(condition = "input.adjustcolors == 5",
+        conditionalPanel(
+            condition = "input.color_data == true || input.color_stats == true",
+            ########## Choose color from list
+            #selectInput("colour_list", "Colour:", choices = ""),
+
+          radioButtons("adjustcolors", "Color palette:", choices = list("Standard" = 1,"Colorblind safe (bright)" = 2,"Colorblind safe (muted)" = 3,"Colorblind safe (light)" = 4, "User defined"=5) , selected =  1),
+              conditionalPanel(condition = "input.adjustcolors == 5",
                  textInput("user_color_list", "List of names or hexadecimal codes", value = "turquoise2,#FF2222,lawngreen"), 
                  
                  h5("",
                     a("Click here for more info on color names",
                       href = "http://www.endmemo.com/program/R/color.php", target="_blank"))
                  
-),
-
-
-
+        )),
 
 ##########
 
 
-        h4("Plot Layout"),      
         numericInput("plot_height", "Height (# pixels): ", value = 480),
         numericInput("plot_width", "Width (# pixels):", value = 480),
 
@@ -117,18 +125,8 @@ conditionalPanel(condition = "input.adjustcolors == 5",
               textInput("range", "Range of values (min,max)", value = "0,2")
               
         ),
-        checkboxInput(inputId = "ordered",
-                      label = "Order data based on median value",
-                      value = FALSE),
-        checkboxInput(inputId = "rotate_plot",
-              label = "Rotate plot 90 degrees",
-              value = FALSE),
-        
-        conditionalPanel(
-            condition = "input.colour_list != 'none'",
-        checkboxInput(inputId = "add_legend",
-              label = "Add legend",
-              value = FALSE)),
+
+
         h4("Labels"),
 
         checkboxInput(inputId = "add_title",
@@ -157,6 +155,11 @@ conditionalPanel(condition = "input.adjustcolors == 5",
               numericInput("fnt_sz_ax", "Size axis labels:", value = 18)
  
       ),
+conditionalPanel(
+  condition = "input.color_data == true || input.color_stats == true",
+  checkboxInput(inputId = "add_legend",
+                label = "Add legend",
+                value = FALSE)),
       conditionalPanel(
         condition = "input.tabs=='Data upload'",
         h4("Data upload"),
@@ -318,6 +321,7 @@ df_upload_tidy <- reactive({
     else if(input$tidyInput == TRUE ) {
       klaas <- df_upload()
     }
+  return(klaas)
 })
  ###################################
 
@@ -328,10 +332,34 @@ df_upload_tidy <- reactive({
 observe({ 
         var_names  <- names(df_upload_tidy())
         var_list <- c("none", var_names)
-        updateSelectInput(session, "colour_list", choices = var_list)
+#        updateSelectInput(session, "colour_list", choices = var_list)
         updateSelectInput(session, "y_var", choices = var_list)
-        updateSelectInput(session, "x_var", choices = var_list)})
+        updateSelectInput(session, "x_var", choices = var_list)
+        })
  ###################################    
+
+###########################################################  
+######## Determine and set the order of the Conditions #######  
+df_sorted <- reactive({
+  
+#  klaas <- df_upload_tidy()
+klaas <-  df_selected()
+
+   if(input$ordered == "median") {
+     klaas$Condition <- reorder(klaas$Condition, klaas$Value, median, na.rm = TRUE)
+
+   } else if (input$ordered == "none") {
+      klaas$Condition <- factor(klaas$Condition, levels=unique(klaas$Condition))
+
+   } else if (input$ordered == "alphabet") {
+     klaas$Condition <- factor(klaas$Condition, levels=unique(sort(klaas$Condition)))
+   }  
+
+  return(klaas)
+  
+})
+
+########################################################### 
 
 
  ###########################################################  
@@ -348,11 +376,6 @@ df_selected <- reactive({
     } else if (input$tidyInput == FALSE ) {
       koos <- df_upload_tidy() %>% filter(!is.na(Value))
     }
-  
-    #If reorder according to median values
-    if(input$ordered == TRUE) {
-      koos <- koos %>% mutate(Condition = reorder(Condition, Value, median))
-    }
 
     return(koos)
 })
@@ -360,7 +383,7 @@ df_selected <- reactive({
 
   
  #############################################################
-#### DISPLAY UPLOADED DATA (exactly as provided ##################
+#### DISPLAY UPLOADED DATA (exactly as provided) ##################
 
     
 output$data_uploaded <- renderDataTable({
@@ -411,10 +434,6 @@ df_summary_median <- reactive({
       df_new_medians <- bind_rows(df_new_medians, df_boostrapped_median)
     }
     
-    if(input$ordered == TRUE) {
-    df_new_medians <- df_new_medians %>% mutate(Condition = reorder(Condition, resampled_median, median))
-    }
-
     df_booted$ci_lo <- tapply(df_new_medians$resampled_median, df_new_medians$Condition, quantile, probs=lower_percentile)
     df_booted$ci_hi <- tapply(df_new_medians$resampled_median, df_new_medians$Condition, quantile, probs=upper_percentile)
 
@@ -480,21 +499,14 @@ output$downloadPlotPNG <- downloadHandler(
 output$coolplot <- renderPlot(width = width, height = height, {
 
   
-  ########## Define kleur
-  #    observe({ print(class(input$colour_list)) })
-  if (input$colour_list == "none") {
-    kleur <- NULL
-  } else if (input$colour_list != "none") {
-    kleur <- as.character(input$colour_list)
-  }
+####### Read the order from the ordered dataframe #############  
+    koos <- df_sorted()
+    custom_order <-  levels(factor(koos$Condition))
+    
+#    observe({ print(custom_order) })
 
-  ########## Define if/how color is used for the stats ############
-  #    observe({ print(class(input$colour_list)) })
-  if (input$color_stats == FALSE) {
-    kleur_stats <- NULL
-  } else if (input$color_stats == TRUE) {
-    kleur_stats <- "Condition"
-  } 
+    
+
   
   
   ########## Define alternative color palettes ##########
@@ -533,6 +545,28 @@ output$coolplot <- renderPlot(width = width, height = height, {
       y_choice <- as.character(input$y_var)
     }
 
+  ########## Define if color is used for the data
+  #    observe({ print(class(input$colour_list)) })
+  if (input$color_data == FALSE) {
+    kleur <- NULL
+  } else if (input$color_data == TRUE) {
+    #    kleur <- as.character(input$colour_list)
+    kleur <- x_choice
+  }
+  
+  ########## Define if/how color is used for the stats ############
+  #    observe({ print(class(input$colour_list)) })
+  if (input$color_stats == FALSE) {
+    kleur_stats <- NULL
+  } else if (input$color_stats == TRUE && input$summaryInput == "boxplot") {
+    kleur_stats <- x_choice
+  } else if (input$color_stats == TRUE && input$summaryInput == "violin") {
+    kleur_stats <- x_choice
+  } else if (input$color_stats == TRUE) {
+    kleur_stats <- "Condition"
+  }  
+    
+  
   ########## Define minimal n - only plot box/violinplots for min_n>9
   
     
@@ -542,15 +576,20 @@ output$coolplot <- renderPlot(width = width, height = height, {
  ###############################################
 ############## GENERATE PLOT LAYERS #############
 
-    p <- ggplot(data=df_selected(), aes_string(x="Condition"))
-
-    ### HACK TO GET RE-ORDERING ACCORDING TO MEDIAN PROPERLY DONE
-    p <- p + geom_boxplot(data=df_selected(), aes(x=Condition, y=Value), alpha=0, fill=NA, size=0)
+    p <- ggplot(data=df_selected(), aes_string(x="Condition")) 
     
-#    observe({ print(x_choice) })
-#    observe({ print(y_choice) })    
+    # Setting the order of the x-axis
+    p <- p + scale_x_discrete(limits=custom_order)
 
-    #### plot individual measurements (1st layer) ####
+  ##### plot selected data summary (bottom layer) ####
+    if (input$summaryInput == "boxplot" && min_n>9) {
+      p <- p + geom_boxplot(data=df_upload_tidy(), aes_string(x=x_choice, y=y_choice, fill=kleur_stats), notch = input$add_CI, outlier.color=NA, width=0.8, size=0.5, alpha=input$alphaInput_summ)
+  
+    } else if (input$summaryInput == "violin" && min_n>9) {
+      p <- p + geom_violin(data=df_upload_tidy(), aes_string(x=x_choice, y=y_choice, fill=kleur_stats),scale = "width", draw_quantiles = c(0.5), width=0.8, size=0.5, alpha=input$alphaInput_summ) 
+    }
+
+   #### plot individual measurements (middle layer) ####
     if (input$jitter_type == "beeswarm") {
       p <- p + geom_quasirandom(data=df_upload_tidy(), aes_string(x=x_choice, y=y_choice, colour = kleur), varwidth = TRUE, cex=3, alpha=input$alphaInput)
     } else if (input$jitter_type == "random") {
@@ -559,39 +598,22 @@ output$coolplot <- renderPlot(width = width, height = height, {
       p <- p + geom_jitter(data=df_upload_tidy(), aes_string(x=x_choice, y=y_choice, colour = kleur), width=0, height=0.0, cex=3, alpha=input$alphaInput)
     }
     
-    ##### plot selected data summary (2nd layer) ####
-    
-    #%#%#%#%#%#%#%#%# DEZE IS OK VOOR DE STATS, NU REST NOG
-        
+  ##### plot selected data summary (top layer) ####
     if (input$summaryInput == "median"  && input$add_CI == TRUE) {
-    p <-  p + geom_point(data=df_summary_median(), aes_string(x=x_choice, y = "median", colour=kleur_stats), shape = 21,fill=NA,size = 8,alpha=input$alphaInput_summ)+
-              geom_linerange(data=df_summary_median(), aes_string(ymin = "ci_lo", ymax = "ci_hi", colour=kleur_stats), size =3,alpha=input$alphaInput_summ)
+    p <-  p + geom_point(data=df_summary_median(), aes_string(x="Condition", y = "median", colour=kleur_stats), shape = 21,fill=NA,size = 8,alpha=input$alphaInput_summ)+
+              geom_linerange(data=df_summary_median(), aes_string(x="Condition", ymin = "ci_lo", ymax = "ci_hi", colour=kleur_stats), size =3,alpha=input$alphaInput_summ)
     }
-
-    
 
     else if (input$summaryInput == "median"  && input$add_CI == FALSE) {
-      p <-  p + geom_errorbar(data=df_summary_median(), aes_string(x=x_choice, ymin="median", ymax="median", colour = kleur_stats), width=.8, size=2, alpha=input$alphaInput_summ)
-    
-    #%#%#%#%#%#%#%#%#
-      
-      
-      
+      p <-  p + geom_errorbar(data=df_summary_median(), aes_string(x="Condition", ymin="median", ymax="median", colour = kleur_stats), width=.8, size=2, alpha=input$alphaInput_summ)
+
     } else if (input$summaryInput == "mean"  && input$add_CI == TRUE) {
-      p <- p + geom_linerange(data=df_summary_mean(), aes_string(ymin = "ci_lo", ymax = "ci_hi", colour=kleur_stats), size =3,alpha=input$alphaInput_summ)+
-        geom_point(data=df_summary_mean(), aes_string(y = "mean", colour=kleur_stats), shape = 21,fill=NA,size = 8,alpha=input$alphaInput_summ)
+      p <- p + geom_linerange(data=df_summary_mean(), aes_string(x="Condition", ymin = "ci_lo", ymax = "ci_hi", colour=kleur_stats), size =3,alpha=input$alphaInput_summ)+
+        geom_point(data=df_summary_mean(), aes_string(x="Condition", y = "mean", colour=kleur_stats), shape = 21,fill=NA,size = 8,alpha=input$alphaInput_summ)
 
     } else if (input$summaryInput == "mean"  && input$add_CI == FALSE) {
-      p <- p + geom_errorbar(data=df_summary_mean(), aes_string(x=x_choice, ymin="mean", ymax="mean", colour=kleur_stats), width=.8, size=2, alpha=input$alphaInput_summ)
-      
-    } else if (input$summaryInput == "boxplot" && min_n>9) {
-     p <- p + geom_errorbar(data=df_summary_mean(), aes_string(x=x_choice, ymin="median", ymax="median"), width=.2, size=2, alpha=0)+
-       geom_boxplot(data=df_selected(), aes_string(x=x_choice, y="Value", fill=kleur_stats), notch = input$add_CI, outlier.color=NA, width=0.8, size=0.5, alpha=input$alphaInput_summ)
-      
-    } else if (input$summaryInput == "violin" && min_n>9) {
-      p <- p + geom_errorbar(data=df_summary_mean(), aes(x=Condition, ymin=median, ymax=median), width=.2, size=2, alpha=0) +
-        geom_violin(data=df_selected(), aes_string(x=x_choice, y="Value", fill=kleur_stats), draw_quantiles = c(0.5), width=0.8, size=0.5, alpha=input$alphaInput_summ) 
-    }
+      p <- p + geom_errorbar(data=df_summary_mean(), aes_string(x="Condition", ymin="mean", ymax="mean", colour=kleur_stats), width=.8, size=2, alpha=input$alphaInput_summ)
+    }  
 
 ########### Do some formatting of the lay-out
 
