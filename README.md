@@ -34,7 +34,7 @@ Note that the app depends on several R packages that need to be installed (shiny
 
 PlotsOfData is inspired on [BoxPlotR](http://shiny.chemgrid.org/boxplotr/). See [this link](https://www.nature.com/articles/nmeth.2813) for background information on boxplots.  
 The code for the shiny app is partially derived from [ggplotGUI](https://github.com/gertstulp/ggplotgui) by [Gert Stulp](https://www.gertstulp.com)  
-The colorblind safe palletes were developed by [Paul Tol](https://personal.sron.nl/~pault/).
+The colorblind safe palettes were developed by [Paul Tol](https://personal.sron.nl/~pault/).
 
 PlotsOfData is created and maintained by Joachim Goedhart ([@joachimgoedhart](https://twitter.com/joachimgoedhart))and Marten Postma
 
