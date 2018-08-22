@@ -404,10 +404,11 @@ df_summary_mean <- reactive({
     summarise(n = n(),
             mean = mean(Value, na.rm = TRUE),
             median = median(Value, na.rm = TRUE),
+            mad = mad(Value, na.rm = TRUE)
             sd = sd(Value, na.rm = TRUE)) %>%
   mutate(sem = sd / sqrt(n - 1),
-         CI_lo = mean + qt((1-Confidence_level)/2, n - 1) * sem,
-         CI_hi = mean - qt((1-Confidence_level)/2, n - 1) * sem)
+         ci_lo = mean + qt((1-Confidence_level)/2, n - 1) * sem,
+         ci_hi = mean - qt((1-Confidence_level)/2, n - 1) * sem)
   
   })
 
@@ -420,15 +421,7 @@ df_summary_median <- reactive({
     
     kees <- df_selected()
  
- #   df_booted <- data.frame(Condition=levels(factor(kees$Condition)), n=tapply(kees$Value, kees$Condition, length), median=tapply(kees$Value, kees$Condition, median))
-    df_booted <- kees %>%
-                  group_by(Condition) %>%
-                    summarise(n= n(),
-                        median = median(Value, na.rm = TRUE),
-                            MAD= mad(Value, na.rm = TRUE, constant=1))
-    
-    
-    
+    df_booted <- data.frame(Condition=levels(factor(kees$Condition)), n=tapply(kees$Value, kees$Condition, length), median=tapply(kees$Value, kees$Condition, median))
     i=0
     df_new_medians <- data.frame(Condition=levels(factor(kees$Condition)), resampled_median=tapply(kees$Value, kees$Condition, boot_median))
     
@@ -442,8 +435,8 @@ df_summary_median <- reactive({
       df_new_medians <- bind_rows(df_new_medians, df_boostrapped_median)
     }
     
-    df_booted$CI_lo <- tapply(df_new_medians$resampled_median, df_new_medians$Condition, quantile, probs=lower_percentile)
-    df_booted$CI_hi <- tapply(df_new_medians$resampled_median, df_new_medians$Condition, quantile, probs=upper_percentile)
+    df_booted$ci_lo <- tapply(df_new_medians$resampled_median, df_new_medians$Condition, quantile, probs=lower_percentile)
+    df_booted$ci_hi <- tapply(df_new_medians$resampled_median, df_new_medians$Condition, quantile, probs=upper_percentile)
 
 #    observe({ print(df_booted) })
 
@@ -460,9 +453,8 @@ df_summary_box <- reactive({
     group_by(Condition) %>% 
     summarise(n = n(),
               mean = mean(Value),
-              SD = sd(Value),
               median = median(Value),
-              MAD = mad(Value, constant=1),
+              sd = sd(Value),
               IQR = IQR(Value))
 })
 
@@ -610,14 +602,14 @@ output$coolplot <- renderPlot(width = width, height = height, {
   ##### plot selected data summary (top layer) ####
     if (input$summaryInput == "median"  && input$add_CI == TRUE) {
     p <-  p + geom_point(data=df_summary_median(), aes_string(x="Condition", y = "median", colour=kleur_stats), shape = 21,fill=NA,size = 8,alpha=input$alphaInput_summ)+
-              geom_linerange(data=df_summary_median(), aes_string(x="Condition", ymin = "CI_lo", ymax = "CI_hi", colour=kleur_stats), size =3,alpha=input$alphaInput_summ)
+              geom_linerange(data=df_summary_median(), aes_string(x="Condition", ymin = "ci_lo", ymax = "ci_hi", colour=kleur_stats), size =3,alpha=input$alphaInput_summ)
     }
 
     else if (input$summaryInput == "median"  && input$add_CI == FALSE) {
       p <-  p + geom_errorbar(data=df_summary_median(), aes_string(x="Condition", ymin="median", ymax="median", colour = kleur_stats), width=.8, size=2, alpha=input$alphaInput_summ)
 
     } else if (input$summaryInput == "mean"  && input$add_CI == TRUE) {
-      p <- p + geom_linerange(data=df_summary_mean(), aes_string(x="Condition", ymin = "CI_lo", ymax = "CI_hi", colour=kleur_stats), size =3,alpha=input$alphaInput_summ)+
+      p <- p + geom_linerange(data=df_summary_mean(), aes_string(x="Condition", ymin = "ci_lo", ymax = "ci_hi", colour=kleur_stats), size =3,alpha=input$alphaInput_summ)+
         geom_point(data=df_summary_mean(), aes_string(x="Condition", y = "mean", colour=kleur_stats), shape = 21,fill=NA,size = 8,alpha=input$alphaInput_summ)
 
     } else if (input$summaryInput == "mean"  && input$add_CI == FALSE) {
