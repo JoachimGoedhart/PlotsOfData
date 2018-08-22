@@ -13,7 +13,12 @@ The plot can be saved as a PDF file, which can be opened and edited with Adobe I
 
 ### Running the App
 
-Currently, the app can only run locally. For instance by using Rstudio:
+Currently, the app can only run from R/Rstudio.
+
+Give it a quick try by running it directly from Github. In the command line (in R or Rstudio) type
+shiny::runGitHub('PlotsOfData', 'JoachimGoedhart')
+
+Or download it to use it offline:
 
 -download the app.R and csv files with example data.
 
