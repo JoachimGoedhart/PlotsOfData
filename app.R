@@ -122,9 +122,10 @@ ui <- fluidPage(
               value = FALSE),
         conditionalPanel(
               condition = "input.adjust_scale == true",
-              textInput("range", "Range of values (min,max)", value = "0,2")
-              
-        ),
+              textInput("range", "Range of values (min,max)", value = "0,2")),
+        checkboxInput(inputId = "no_grid",
+                      label = "Remove gridlines",
+                      value = FALSE),
 
 
         h4("Labels"),
@@ -654,7 +655,14 @@ output$coolplot <- renderPlot(width = width, height = height, {
     if (input$add_legend == FALSE) {  
       p <- p + theme(legend.position="none")
     }
+
+     #remove gridlines (if selected)
+     if (input$no_grid == TRUE) {  
+       p <- p+ theme(panel.grid.major = element_blank(),
+                      panel.grid.minor = element_blank())
+     }
      
+          
    if (input$adjustcolors >1) {
        p <- p+ scale_color_manual(values=newColors)
        p <- p+ scale_fill_manual(values=newColors)
