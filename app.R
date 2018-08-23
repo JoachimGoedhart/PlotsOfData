@@ -93,7 +93,18 @@ ui <- fluidPage(
               label = "Rotate plot 90 degrees",
               value = FALSE),
 
-        checkboxInput("color_data", "Use color for the data", value=FALSE),
+        checkboxInput(inputId = "no_grid",
+                      label = "Remove gridlines",
+                      value = FALSE),
+
+        checkboxInput(inputId = "adjust_scale",
+                      label = "Adjust scale",
+                      value = FALSE),
+        conditionalPanel(
+          condition = "input.adjust_scale == true",
+          textInput("range", "Range of values (min,max)", value = "0,2")),
+        
+                checkboxInput("color_data", "Use color for the data", value=FALSE),
         checkboxInput("color_stats", "Use color for the stats", value=FALSE),
 
         conditionalPanel(
@@ -111,22 +122,8 @@ ui <- fluidPage(
                  
         )),
 
-##########
-
-
         numericInput("plot_height", "Height (# pixels): ", value = 480),
         numericInput("plot_width", "Width (# pixels):", value = 480),
-
-        checkboxInput(inputId = "adjust_scale",
-              label = "Adjust scaling",
-              value = FALSE),
-        conditionalPanel(
-              condition = "input.adjust_scale == true",
-              textInput("range", "Range of values (min,max)", value = "0,2")),
-        checkboxInput(inputId = "no_grid",
-                      label = "Remove gridlines",
-                      value = FALSE),
-
 
         h4("Labels"),
 
@@ -156,11 +153,11 @@ ui <- fluidPage(
               numericInput("fnt_sz_ax", "Size axis labels:", value = 18)
  
       ),
-conditionalPanel(
-  condition = "input.color_data == true || input.color_stats == true",
-  checkboxInput(inputId = "add_legend",
-                label = "Add legend",
-                value = FALSE)),
+        conditionalPanel(
+          condition = "input.color_data == true || input.color_stats == true",
+          checkboxInput(inputId = "add_legend",
+                        label = "Add legend",
+                        value = FALSE)),
       conditionalPanel(
         condition = "input.tabs=='Data upload'",
         h4("Data upload"),
