@@ -80,7 +80,7 @@ ui <- fluidPage(
           
         radioButtons("summaryInput", "Statistics", choices = list("Median" = "median", "Mean" = "mean", "Boxplot (minimal n=10)" = "boxplot", "Violin Plot (minimal n=10)" = "violin"), selected = "median"),
 #        sliderInput("Input_CI", "Confidence Level", 90, 100, 95),
-        checkboxInput(inputId = "add_CI", label = HTML("Add 95% CI <br/> (unadvisable for n<10)"), value = FALSE),
+        checkboxInput(inputId = "add_CI", label = HTML("Add 95% CI <br/> (minimal n=10)"), value = FALSE),
         sliderInput("alphaInput_summ", "Visibility of the statistics", 0, 1, 1),
 
         radioButtons(inputId = "ordered",
@@ -594,6 +594,10 @@ output$coolplot <- renderPlot(width = width, height = height, {
   
     } else if (input$summaryInput == "violin" && min_n>9) {
       p <- p + geom_violin(data=df_upload_tidy(), aes_string(x=x_choice, y=y_choice, fill=kleur_stats),scale = "width", draw_quantiles = c(0.5), width=0.8, size=0.5, alpha=input$alphaInput_summ) 
+      if (input$add_CI == TRUE) {
+        p <- p + geom_linerange(data=df_summary_median(), aes_string(x="Condition", ymin = "CI_lo", ymax = "CI_hi"), colour="black", size =3,alpha=input$alphaInput_summ)
+       
+      }
     }
 
    #### plot individual measurements (middle layer) ####
@@ -606,19 +610,19 @@ output$coolplot <- renderPlot(width = width, height = height, {
     }
     
   ##### plot selected data summary (top layer) ####
-    if (input$summaryInput == "median"  && input$add_CI == TRUE) {
+    if (input$summaryInput == "median"  && input$add_CI == TRUE && min_n>9) {
     p <-  p + geom_point(data=df_summary_median(), aes_string(x="Condition", y = "median", colour=kleur_stats), shape = 21,fill=NA,size = 8,alpha=input$alphaInput_summ)+
               geom_linerange(data=df_summary_median(), aes_string(x="Condition", ymin = "CI_lo", ymax = "CI_hi", colour=kleur_stats), size =3,alpha=input$alphaInput_summ)
     }
 
-    else if (input$summaryInput == "median"  && input$add_CI == FALSE) {
+    else if (input$summaryInput == "median"  && input$add_CI == FALSE || min_n<10) {
       p <-  p + geom_errorbar(data=df_summary_median(), aes_string(x="Condition", ymin="median", ymax="median", colour = kleur_stats), width=.8, size=2, alpha=input$alphaInput_summ)
 
-    } else if (input$summaryInput == "mean"  && input$add_CI == TRUE) {
+    } else if (input$summaryInput == "mean"  && input$add_CI == TRUE && min_n>9) {
       p <- p + geom_linerange(data=df_summary_mean(), aes_string(x="Condition", ymin = "CI_lo", ymax = "CI_hi", colour=kleur_stats), size =3,alpha=input$alphaInput_summ)+
         geom_point(data=df_summary_mean(), aes_string(x="Condition", y = "mean", colour=kleur_stats), shape = 21,fill=NA,size = 8,alpha=input$alphaInput_summ)
 
-    } else if (input$summaryInput == "mean"  && input$add_CI == FALSE) {
+    } else if (input$summaryInput == "mean"  && input$add_CI == FALSE || min_n<10) {
       p <- p + geom_errorbar(data=df_summary_mean(), aes_string(x="Condition", ymin="mean", ymax="mean", colour=kleur_stats), width=.8, size=2, alpha=input$alphaInput_summ)
     }  
 
