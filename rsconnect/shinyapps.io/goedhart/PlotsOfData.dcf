@@ -1,0 +1,13 @@
+name: PlotsOfData
+title: PlotsOfData
+username:
+account: goedhart
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 458873
+bundleId: 1604090
+url: https://goedhart.shinyapps.io/PlotsOfData/
+when: 1537871761.02692
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: .RData|.Rapp.history|ComparisonPlot_example1.png
