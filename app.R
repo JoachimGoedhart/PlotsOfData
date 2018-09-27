@@ -651,7 +651,8 @@ output$coolplot <- renderPlot(width = width, height = height, {
     # if the range of values is specified    
     if (input$adjust_scale == TRUE) { 
       rng <- as.numeric(strsplit(input$range,",")[[1]])
-      p <- p + ylim(rng[1],rng[2])}
+      p <- p + coord_cartesian(ylim=c(rng[1],rng[2]))
+      }
 
     # if title specified
     if (input$add_title)
