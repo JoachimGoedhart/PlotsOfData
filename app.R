@@ -646,14 +646,17 @@ output$coolplot <- renderPlot(width = width, height = height, {
      p <- p+ theme_light(base_size = 16)
     
     #### If selected, rotate plot 90 degrees CW ####
-    if (input$rotate_plot == TRUE) { p <- p + coord_flip()}
+     rng <- as.numeric(strsplit(input$range,",")[[1]])
+ 
+     # if the range of values is specified    
+     if (input$adjust_scale == TRUE) { 
+       p <- p + coord_cartesian(ylim=c(rng[1],rng[2]))
+     } else if (input$adjust_scale == FALSE)
+     {
+       rng <- c(NULL,NULL)
+     }
+    if (input$rotate_plot == TRUE) { p <- p + coord_flip(ylim=c(rng[1],rng[2]))}
     
-    # if the range of values is specified    
-    if (input$adjust_scale == TRUE) { 
-      rng <- as.numeric(strsplit(input$range,",")[[1]])
-      p <- p + coord_cartesian(ylim=c(rng[1],rng[2]))
-      }
-
     # if title specified
     if (input$add_title)
       p <- p + ggtitle(input$title)
