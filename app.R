@@ -491,22 +491,35 @@ height <- reactive ({ input$plot_height })
 
 output$downloadPlotPDF <- downloadHandler(
   filename <- function() {
-    paste("ComparisonPlot_", Sys.time(), ".pdf", sep = "")
+    paste("PlotsOfData_", Sys.time(), ".pdf", sep = "")
+#    paste("PlotsOfData.pdf")
   },
   content <- function(file) {
-    ggsave(file, width = input$plot_width/72,
-           height = input$plot_height/72, dpi="retina")
+    pdf(file, width = input$myWidth/72, height = input$myHeight/72)
+    ## ---------------
+    plot(plotdata())
+    ## ---------------
+    dev.off()
+    # ggsave(file, width = input$plot_width/72,
+    #        height = input$plot_height/72, dpi="retina")
   },
   contentType = "application/pdf" # MIME type of the image
 )
 
 output$downloadPlotPNG <- downloadHandler(
   filename <- function() {
-    paste("ComparisonPlot_", Sys.time(), ".png", sep = "")
+    paste("PlotsOfData_", Sys.time(), ".png", sep = "")
   },
   content <- function(file) {
-    ggsave(file, width = input$plot_width/72,
-           height = input$plot_height/72)
+    png(file, width = input$plot_width*4, height = input$plot_height*4, res=300)
+    ## ---------------
+    plot(plotdata())
+    ## ---------------
+    dev.off()
+    
+    
+    # ggsave(file, width = input$plot_width/72,
+    #        height = input$plot_height/72)
   },
   contentType = "application/png" # MIME type of the image
 )
@@ -518,7 +531,7 @@ output$downloadPlotPNG <- downloadHandler(
 ######## PREPARE PLOT FOR DISPLAY ##########
  ###########################################
 
-output$coolplot <- renderPlot(width = width, height = height, {
+plotdata <- reactive({
 
   
 ####### Read the order from the ordered dataframe #############  
@@ -689,9 +702,20 @@ output$coolplot <- renderPlot(width = width, height = height, {
    }
     
     ### Output the plot ######
-    p
+    return(p)
     
-  }) #close output$coolplot
+  }) #close plotdata
+
+
+
+ ########################################
+##### Make actual plot ############
+
+output$coolplot <- renderPlot(width = width, height = height, {
+  plot(plotdata())
+}
+)
+##########################################
 
 
 ###########################################
