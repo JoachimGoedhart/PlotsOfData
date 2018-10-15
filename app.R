@@ -126,7 +126,7 @@ ui <- fluidPage(
         conditionalPanel(
             condition = "input.color_data == true || input.color_stats == true",
             ########## Choose color from list
-            #selectInput("colour_list", "Colour:", choices = ""),
+            selectInput("colour_list", "Colour:", choices = ""),
 
           radioButtons("adjustcolors", "Color palette:", choices = list("Standard" = 1,"Colorblind safe (bright)" = 2,"Colorblind safe (muted)" = 3,"Colorblind safe (light)" = 4, "User defined"=5) , selected =  1),
               conditionalPanel(condition = "input.adjustcolors == 5",
@@ -237,8 +237,9 @@ ui <- fluidPage(
              a("Click here for more info on tidy data",
                href = "http://thenode.biologists.com/converting-excellent-spreadsheets-tidy-data/education/")),
           selectInput("x_var", "Conditions to compare:", choices = ""),
-          selectInput("y_var", "Variables:", choices = "")
-          
+          selectInput("y_var", "Variables:", choices = ""),
+          selectInput("h_facet", "Separate horizontal:", choices = ""),
+          selectInput("v_facet", "Separate vertical:", choices = "")  
           )
       ),
       
@@ -251,7 +252,7 @@ ui <- fluidPage(
         condition = "input.tabs=='Data Summary'",
         h4("Data summary")    
       )
-      
+        
     ),
     mainPanel(
  
@@ -332,6 +333,8 @@ df_upload_tidy <- reactive({
       klaas <- gather(df_upload(), Condition, Value)
     }
     else if(input$tidyInput == TRUE ) {
+      #Convert the integers to factors, to enable adding discrete colors
+      #klaas <- df_upload() %>% mutate_if(is.integer, factor)
       klaas <- df_upload()
     }
   return(klaas)
@@ -345,10 +348,24 @@ df_upload_tidy <- reactive({
 observe({ 
         var_names  <- names(df_upload_tidy())
         var_list <- c("none", var_names)
-#        updateSelectInput(session, "colour_list", choices = var_list)
-        updateSelectInput(session, "y_var", choices = var_list)
+
+        # Get the names of columns that are factors. These can be used for coloring the data with discrete colors        
+        nms_fact <- names(Filter(function(x) is.factor(x) || is.integer(x) ||
+                                   is.logical(x) ||
+                                   is.character(x),
+                                 df_upload_tidy()))
+        nms_var <- names(Filter(function(x) is.integer(x) ||
+                                  is.numeric(x) ||
+                                  is.double(x),
+                                df_upload_tidy()))
+        facet_list <- c(".",nms_fact)
+
+        updateSelectInput(session, "colour_list", choices = nms_fact)
+        updateSelectInput(session, "y_var", choices = nms_var)
         updateSelectInput(session, "x_var", choices = var_list)
-        })
+        updateSelectInput(session, "h_facet", choices = facet_list)
+        updateSelectInput(session, "v_facet", choices = facet_list)
+    })
  ###################################    
 
 ###########################################################  
@@ -383,8 +400,11 @@ df_selected <- reactive({
     df_temp <- df_upload_tidy() 
     x_choice <- input$x_var
     y_choice <- input$y_var
+ #   kleur_choice <- input$colour_list
     
+
     koos <- df_temp %>% select(Condition = !!x_choice , Value = !!y_choice) %>% filter(!is.na(Value))
+#    koos$Kleur <- as.factor(koos$Kleur)
 
     } else if (input$tidyInput == FALSE ) {
       koos <- df_upload_tidy() %>% filter(!is.na(Value))
@@ -542,7 +562,7 @@ plotdata <- reactive({
 
     
 
-  
+
   
   ########## Define alternative color palettes ##########
   
@@ -557,16 +577,7 @@ plotdata <- reactive({
   } else if (input$adjustcolors == 5) {
     newColors <- gsub("\\s","", strsplit(input$user_color_list,",")[[1]])
   }
-  
-######## Repeat the colors, if number of colors < number of conditions
-  klaas <- df_selected()
-  max_colors <- nlevels(as.factor(klaas$Condition))
-  if(length(newColors) < max_colors) {
-    newColors<-rep(newColors,times=(round(max_colors/length(newColors)))+1)
-  }
 
-  
-  
 ########## Set default to Plotting "Condition" and "Value"
     if (input$x_var == "none") {
       x_choice <- "Condition"
@@ -585,10 +596,30 @@ plotdata <- reactive({
   if (input$color_data == FALSE) {
     kleur <- NULL
   } else if (input$color_data == TRUE) {
-    #    kleur <- as.character(input$colour_list)
-    kleur <- x_choice
+        kleur <- as.character(input$colour_list)
+#    kleur <- x_choice
   }
   
+
+    ######## Repeat the colors, if number of colors < number of conditions/factors
+#    klaas <- df_upload_tidy()  %>% mutate_if(is.integer, factor)
+    klaas <- df_upload_tidy() 
+    klaas <- as.data.frame(klaas)
+    
+    #### Used to convert integers to factors, compatible with a discrete color scale
+    klaas[,kleur] <- as.factor(klaas[,kleur])
+#    kleur_column <- as.character(input$colour_list)
+    
+    #Determine the number of colors that are necessary
+#    max_colors <- nlevels(as.factor(klaas[,kleur_column]))
+    max_colors <- nlevels(as.factor(klaas[,kleur]))
+    
+    
+    #If unsufficient colors available, repeat
+    if(length(newColors) < max_colors) {
+      newColors<-rep(newColors,times=(round(max_colors/length(newColors)))+1)
+    }
+    
   ########## Define if/how color is used for the stats ############
   #    observe({ print(class(input$colour_list)) })
   if (input$color_stats == FALSE) {
@@ -630,11 +661,11 @@ plotdata <- reactive({
 
    #### plot individual measurements (middle layer) ####
     if (input$jitter_type == "beeswarm") {
-      p <- p + geom_quasirandom(data=df_upload_tidy(), aes_string(x=x_choice, y=y_choice, colour = kleur), varwidth = TRUE, cex=3, alpha=input$alphaInput)
+      p <- p + geom_quasirandom(data=klaas, aes_string(x=x_choice, y=y_choice, colour = kleur), varwidth = TRUE, cex=3, alpha=input$alphaInput)
     } else if (input$jitter_type == "random") {
-      p <- p + geom_jitter(data=df_upload_tidy(), aes_string(x=x_choice, y=y_choice, colour = kleur), width=0.3, height=0.0, cex=3, alpha=input$alphaInput)
+      p <- p + geom_jitter(data=klaas, aes_string(x=x_choice, y=y_choice, colour = kleur), width=0.3, height=0.0, cex=3, alpha=input$alphaInput)
     } else if (input$jitter_type == "none") {
-      p <- p + geom_jitter(data=df_upload_tidy(), aes_string(x=x_choice, y=y_choice, colour = kleur), width=0, height=0.0, cex=3, alpha=input$alphaInput)
+      p <- p + geom_jitter(data=klaas, aes_string(x=x_choice, y=y_choice, colour = kleur), width=0, height=0.0, cex=3, alpha=input$alphaInput)
     }
     
   ##### plot selected data summary (top layer) ####
@@ -701,6 +732,12 @@ plotdata <- reactive({
        p <- p+ scale_fill_manual(values=newColors)
    }
     
+     if(input$tidyInput == TRUE && input$h_facet !="." || input$v_facet !=".") {
+#       x <- as.character(input$h_facet)
+       p <- p + facet_grid(reformulate(input$h_facet,input$v_facet))
+     }
+     
+     
     ### Output the plot ######
     return(p)
     
