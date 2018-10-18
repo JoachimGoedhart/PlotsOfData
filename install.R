@@ -1,8 +1,0 @@
-install.packages("shiny")
-install.packages("ggplot2")
-install.packages("dplyr")
-install.packages("tidyr")
-install.packages("readr")
-install.packages("magrittr")
-install.packages("ggbeeswarm")
-install.packages("readxl")

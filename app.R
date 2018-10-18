@@ -240,7 +240,9 @@ ui <- fluidPage(
           selectInput("y_var", "Variables:", choices = ""),
           selectInput("h_facet", "Separate horizontal:", choices = ""),
           selectInput("v_facet", "Separate vertical:", choices = "")  
-          )
+          ), 
+        conditionalPanel(
+          condition = "input.tidyInput==false", (downloadButton("downloadData", "Download in tidy format (csv)")))
       ),
       
       conditionalPanel(
@@ -347,7 +349,7 @@ df_upload_tidy <- reactive({
 
 observe({ 
         var_names  <- names(df_upload_tidy())
-        var_list <- c("none", var_names)
+        varx_list <- c("none", var_names)
 
         # Get the names of columns that are factors. These can be used for coloring the data with discrete colors        
         nms_fact <- names(Filter(function(x) is.factor(x) || is.integer(x) ||
@@ -358,11 +360,14 @@ observe({
                                   is.numeric(x) ||
                                   is.double(x),
                                 df_upload_tidy()))
+        
+        vary_list <- c("none",nms_var)
+        
         facet_list <- c(".",nms_fact)
 
         updateSelectInput(session, "colour_list", choices = nms_fact)
-        updateSelectInput(session, "y_var", choices = nms_var)
-        updateSelectInput(session, "x_var", choices = var_list)
+        updateSelectInput(session, "y_var", choices = vary_list)
+        updateSelectInput(session, "x_var", choices = varx_list)
         updateSelectInput(session, "h_facet", choices = facet_list)
         updateSelectInput(session, "v_facet", choices = facet_list)
     })
@@ -595,31 +600,32 @@ plotdata <- reactive({
   #    observe({ print(class(input$colour_list)) })
   if (input$color_data == FALSE) {
     kleur <- NULL
+    observe({ print("Kleur <- NULL") })
   } else if (input$color_data == TRUE) {
         kleur <- as.character(input$colour_list)
-#    kleur <- x_choice
   }
   
 
-    ######## Repeat the colors, if number of colors < number of conditions/factors
-#    klaas <- df_upload_tidy()  %>% mutate_if(is.integer, factor)
+    ######## The df_upload_tidy is used for defining colors, needed for compatibility with tidy data and for coloring factors
     klaas <- df_upload_tidy() 
     klaas <- as.data.frame(klaas)
+
     
+    if (input$color_data == TRUE || input$color_stats == TRUE) {    
     #### Used to convert integers to factors, compatible with a discrete color scale
     klaas[,kleur] <- as.factor(klaas[,kleur])
-#    kleur_column <- as.character(input$colour_list)
-    
+
     #Determine the number of colors that are necessary
-#    max_colors <- nlevels(as.factor(klaas[,kleur_column]))
     max_colors <- nlevels(as.factor(klaas[,kleur]))
     
     
-    #If unsufficient colors available, repeat
-    if(length(newColors) < max_colors) {
-      newColors<-rep(newColors,times=(round(max_colors/length(newColors)))+1)
-    }
+        #If unsufficient colors available, repeat
+        if(length(newColors) < max_colors) {
+          newColors<-rep(newColors,times=(round(max_colors/length(newColors)))+1)
+        }
     
+    
+    }
   ########## Define if/how color is used for the stats ############
   #    observe({ print(class(input$colour_list)) })
   if (input$color_stats == FALSE) {
@@ -753,6 +759,21 @@ output$coolplot <- renderPlot(width = width, height = height, {
 }
 )
 ##########################################
+
+###########################################
+#### Export the data in tidy format ###########
+
+output$downloadData <- downloadHandler(
+  filename = function() {
+    paste("PlotsOfData_Tidy", ".csv", sep = "")
+  },
+  content = function(file) {
+    write.csv(df_selected(), file, row.names = FALSE)
+  }
+)
+
+
+###########################################
 
 
 ###########################################
