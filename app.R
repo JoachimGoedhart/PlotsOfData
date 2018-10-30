@@ -38,6 +38,7 @@ library(readr)
 library(magrittr)
 library(ggbeeswarm)
 library(readxl)
+library(ggforce)
 
 ################
 
@@ -82,7 +83,7 @@ ui <- fluidPage(
     sidebarPanel(width=3,
       conditionalPanel(
         condition = "input.tabs=='Plot'",
-        radioButtons("jitter_type", "Data offset", choices = list("Quasirandom" = "beeswarm", "Random" = "random", "None (for small n)" = "none"), selected = "beeswarm"),
+        radioButtons("jitter_type", "Data offset", choices = list("Quasirandom" = "beeswarm", "Sinaplot" = "sina", "Random" = "random", "None (for small n)" = "none"), selected = "beeswarm"),
         
         
         
@@ -668,6 +669,11 @@ plotdata <- reactive({
    #### plot individual measurements (middle layer) ####
     if (input$jitter_type == "beeswarm") {
       p <- p + geom_quasirandom(data=klaas, aes_string(x=x_choice, y=y_choice, colour = kleur), varwidth = TRUE, cex=3, alpha=input$alphaInput)
+
+    } else if (input$jitter_type == "sina") {
+      p <- p + geom_sina(data=klaas, aes_string(x=x_choice, y=y_choice, colour = kleur), method="density", maxwidth = .8, cex=3, alpha=input$alphaInput)
+      
+      
     } else if (input$jitter_type == "random") {
       p <- p + geom_jitter(data=klaas, aes_string(x=x_choice, y=y_choice, colour = kleur), width=0.3, height=0.0, cex=3, alpha=input$alphaInput)
     } else if (input$jitter_type == "none") {
