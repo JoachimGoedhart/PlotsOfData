@@ -82,7 +82,7 @@ ui <- fluidPage(
     sidebarPanel(width=3,
       conditionalPanel(
         condition = "input.tabs=='Plot'",
-        radioButtons("jitter_type", "Data offset", choices = list("Beeswarm" = "beeswarm", "Random" = "random", "None (for small n)" = "none"), selected = "beeswarm"),
+        radioButtons("jitter_type", "Data offset", choices = list("Quasirandom" = "beeswarm", "Random" = "random", "None (for small n)" = "none"), selected = "beeswarm"),
         
         
         
