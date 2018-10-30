@@ -229,6 +229,9 @@ ui <- fluidPage(
                          "Comma" = ",",
                          "Semicolon" = ";"),
                           selected = "\t")),
+        conditionalPanel(
+          condition = "input.tidyInput==false",        selectInput("remove", "Select columns to remove", "", multiple = TRUE)),
+        
         checkboxInput(inputId = "tidyInput",
                       label = "These data are Tidy",
                       value = FALSE),
@@ -242,6 +245,9 @@ ui <- fluidPage(
           selectInput("h_facet", "Separate horizontal:", choices = ""),
           selectInput("v_facet", "Separate vertical:", choices = "")  
           ), 
+        
+        
+        
         conditionalPanel(
           condition = "input.tidyInput==false", (downloadButton("downloadData", "Download in tidy format (csv)")))
       ),
@@ -260,7 +266,8 @@ ui <- fluidPage(
     mainPanel(
  
        tabsetPanel(id="tabs",
-                  tabPanel("Data upload", h4("Data as provided"), dataTableOutput("data_uploaded")),
+                  tabPanel("Data upload", h4("Data as provided"),
+dataTableOutput("data_uploaded")),
                   tabPanel("Plot", downloadButton("downloadPlotPDF", "Download pdf-file"), downloadButton("downloadPlotPNG", "Download png-file"), plotOutput("coolplot")
                   ), 
                   tabPanel("Data Summary", tableOutput('data_summary')),
@@ -280,6 +287,7 @@ server <- function(input, output, session) {
   ###### DATA INPUT ###################
 
   df_upload <- reactive({
+    
     if (input$data_input == 1) {
       data <- df_wide_example
     }  else if (input$data_input == 2) {
@@ -318,8 +326,21 @@ server <- function(input, output, session) {
           })
         }
       }
-  }
+    }
+    updateSelectInput(session, "remove", choices = names(data))
     return(data)
+})
+  
+  
+df_filtered <- reactive({     
+  
+  if (!is.null(input$remove)) {
+    columns = input$remove
+    df <- df_upload() %>% select(-one_of(columns))
+  } else if (is.null(input$remove)) {
+  df <- df_upload()}
+  
+  
 })
 
  #####################################
@@ -333,7 +354,13 @@ server <- function(input, output, session) {
 #Tidy data will be used as supplied
 df_upload_tidy <- reactive({
     if(input$tidyInput == FALSE ) {
-      klaas <- gather(df_upload(), Condition, Value)
+      klaas <- df_upload()
+
+#      if (!is.null(input$remove)) {
+#        columns <-  input$remove
+#        klaas <- klaas %>% select(-one_of(columns))
+#      }
+      klaas <- df_filtered() %>% gather(Condition, Value)
     }
     else if(input$tidyInput == TRUE ) {
       #Convert the integers to factors, to enable adding discrete colors
@@ -349,7 +376,7 @@ df_upload_tidy <- reactive({
 ##### Get the Variables ##############
 
 observe({ 
-        var_names  <- names(df_upload_tidy())
+        var_names  <- names(df_upload())
         varx_list <- c("none", var_names)
 
         # Get the names of columns that are factors. These can be used for coloring the data with discrete colors        
@@ -366,11 +393,17 @@ observe({
         
         facet_list <- c(".",nms_fact)
 
+        
+        # Get a list of the different conditions        
+#        koos <- df_upload()
+#        column_list <- as.factor(koos$Condition)
+
         updateSelectInput(session, "colour_list", choices = nms_fact)
         updateSelectInput(session, "y_var", choices = vary_list)
         updateSelectInput(session, "x_var", choices = varx_list)
         updateSelectInput(session, "h_facet", choices = facet_list)
         updateSelectInput(session, "v_facet", choices = facet_list)
+
     })
  ###################################    
 
@@ -427,7 +460,7 @@ df_selected <- reactive({
     
 output$data_uploaded <- renderDataTable({
 #    observe({ print(input$tidyInput) })
-      df_upload()
+  df_filtered()
   })
  #############################################################
 
