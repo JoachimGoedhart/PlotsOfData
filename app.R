@@ -269,6 +269,8 @@ ui <- fluidPage(
         checkboxGroupInput("stats_select", label = h5("Statistics for table:"), 
                            choices = list("mean", "sd", "sem","95CI mean", "median", "MAD","IQR", "95CI median"),
                            selected = "sem"),
+        actionButton('select_all1','select all'),
+        actionButton('deselect_all1','deselect all'),
         numericInput("digits", "Digits:", 2, min = 0, max = 5)
 #        ,
 #        selectInput("stats_hide2", "Select columns to hide", "", multiple = TRUE, choices=list("mean", "sd", "sem","95CI mean", "median", "MAD","IQR", "95CI median")
@@ -837,7 +839,7 @@ df_filtered_stats <- reactive({
     columns <- c("Condition", "n", columns)
     df <- klaas %>% select(one_of(columns))
   } else if (is.null(input$stats_select)) {
-    df <- klaas}
+    df <- klaas %>% select("Condition", "n")}
 })
  ###########################################
 
@@ -860,6 +862,15 @@ observeEvent(input$summaryInput, {
   
 })
 
+observeEvent(input$select_all1, {
+  updateSelectInput(session, "stats_select", selected = list("mean", "sd", "sem", "95CI mean","median", "MAD", "IQR", "95CI median"))
+  })
+
+observeEvent(input$deselect_all1, {
+  updateSelectInput(session, "stats_select", selected = "")
+})
+
+
  ###########################################
 
 
@@ -874,7 +885,7 @@ output$data_summary <- renderDataTable(
   selection = 'none',
   extensions = c('Buttons', 'ColReorder'),
   options = list(dom = 'Bfrtip',
-             buttons = c('copy', 'csv', 'print'),
+             buttons = c('copy', 'csv', 'pdf'),
     editable=FALSE, colReorder = list(realtime = FALSE), columnDefs = list(list(className = 'dt-center', targets = '_all'))
     ) 
   ) 
