@@ -38,7 +38,10 @@ library(readr)
 library(magrittr)
 library(ggbeeswarm)
 library(readxl)
-library(ggforce)
+library(DT)
+
+#Uncomment for sinaplot
+#library(ggforce)
 
 ################
 
@@ -83,7 +86,10 @@ ui <- fluidPage(
     sidebarPanel(width=3,
       conditionalPanel(
         condition = "input.tabs=='Plot'",
-        radioButtons("jitter_type", "Data offset", choices = list("Quasirandom" = "beeswarm", "Sinaplot" = "sina", "Random" = "random", "None (for small n)" = "none"), selected = "beeswarm"),
+        radioButtons("jitter_type", "Data offset", choices = list("Quasirandom" = "beeswarm", 
+#Uncomment for sinaplot                                           "Sinaplot" = "sina", 
+                                                                  "Random" = "random", 
+                                                                  "None (for small n)" = "none"), selected = "beeswarm"),
         
         
         
@@ -230,7 +236,7 @@ ui <- fluidPage(
                          "Semicolon" = ";"),
                           selected = "\t")),
         conditionalPanel(
-          condition = "input.tidyInput==false",        selectInput("remove", "Select columns to remove", "", multiple = TRUE)),
+          condition = "input.tidyInput==false",        selectInput("data_remove", "Select columns to remove", "", multiple = TRUE)),
         
         checkboxInput(inputId = "tidyInput",
                       label = "These data are Tidy",
@@ -259,18 +265,26 @@ ui <- fluidPage(
       
       conditionalPanel(
         condition = "input.tabs=='Data Summary'",
-        h4("Data summary")    
-      )
+        h4("Data summary") ,
+        checkboxGroupInput("stats_select", label = h5("Statistics for table:"), 
+                           choices = list("mean", "sd", "sem","95CI mean", "median", "MAD","IQR", "95CI median"),
+                           selected = "sem"),
+        numericInput("digits", "Digits:", 2, min = 0, max = 5)
+#        ,
+#        selectInput("stats_hide2", "Select columns to hide", "", multiple = TRUE, choices=list("mean", "sd", "sem","95CI mean", "median", "MAD","IQR", "95CI median")
+      )   
+      
         
     ),
     mainPanel(
  
        tabsetPanel(id="tabs",
                   tabPanel("Data upload", h4("Data as provided"),
-dataTableOutput("data_uploaded")),
+                  dataTableOutput("data_uploaded")),
                   tabPanel("Plot", downloadButton("downloadPlotPDF", "Download pdf-file"), downloadButton("downloadPlotPNG", "Download png-file"), plotOutput("coolplot")
                   ), 
-                  tabPanel("Data Summary", tableOutput('data_summary')),
+                  tabPanel("Data Summary", dataTableOutput('data_summary')
+                           ),
                   tabPanel("About", includeHTML("about.html")
                            )
                   
@@ -327,19 +341,18 @@ server <- function(input, output, session) {
         }
       }
     }
-    updateSelectInput(session, "remove", choices = names(data))
+    updateSelectInput(session, "data_remove", choices = names(data))
     return(data)
 })
   
   
 df_filtered <- reactive({     
   
-  if (!is.null(input$remove)) {
-    columns = input$remove
+  if (!is.null(input$data_remove)) {
+    columns = input$data_remove
     df <- df_upload() %>% select(-one_of(columns))
-  } else if (is.null(input$remove)) {
+  } else if (is.null(input$data_remove)) {
   df <- df_upload()}
-  
   
 })
 
@@ -356,10 +369,6 @@ df_upload_tidy <- reactive({
     if(input$tidyInput == FALSE ) {
       klaas <- df_upload()
 
-#      if (!is.null(input$remove)) {
-#        columns <-  input$remove
-#        klaas <- klaas %>% select(-one_of(columns))
-#      }
       klaas <- df_filtered() %>% gather(Condition, Value)
     }
     else if(input$tidyInput == TRUE ) {
@@ -392,11 +401,6 @@ observe({
         vary_list <- c("none",nms_var)
         
         facet_list <- c(".",nms_fact)
-
-        
-        # Get a list of the different conditions        
-#        koos <- df_upload()
-#        column_list <- as.factor(koos$Condition)
 
         updateSelectInput(session, "colour_list", choices = nms_fact)
         updateSelectInput(session, "y_var", choices = vary_list)
@@ -457,11 +461,18 @@ df_selected <- reactive({
  #############################################################
 #### DISPLAY UPLOADED DATA (exactly as provided) ##################
 
-    
-output$data_uploaded <- renderDataTable({
+
+output$data_uploaded <- renderDataTable(
+
 #    observe({ print(input$tidyInput) })
-  df_filtered()
-  })
+  df_filtered(),
+  rownames = FALSE,
+  options = list(pageLength = 100, autoWidth = FALSE,
+                  lengthMenu = c(10, 100, 1000, 10000)),
+  editable = FALSE,selection = 'none'
+)
+  
+  
  #############################################################
 
 
@@ -475,11 +486,13 @@ df_summary_mean <- reactive({
     group_by(Condition) %>% 
     summarise(n = n(),
             mean = mean(Value, na.rm = TRUE),
-            median = median(Value, na.rm = TRUE),
+#            median = median(Value, na.rm = TRUE),
             sd = sd(Value, na.rm = TRUE)) %>%
   mutate(sem = sd / sqrt(n - 1),
-         CI_lo = mean + qt((1-Confidence_level)/2, n - 1) * sem,
-         CI_hi = mean - qt((1-Confidence_level)/2, n - 1) * sem)
+         mean_CI_lo = mean + qt((1-Confidence_level)/2, n - 1) * sem,
+         mean_CI_hi = mean - qt((1-Confidence_level)/2, n - 1) * sem)
+  
+#  observe({ print(koos) })
   
   })
 
@@ -495,9 +508,11 @@ df_summary_median <- reactive({
  #   df_booted <- data.frame(Condition=levels(factor(kees$Condition)), n=tapply(kees$Value, kees$Condition, length), median=tapply(kees$Value, kees$Condition, median))
     df_booted <- kees %>%
                   group_by(Condition) %>%
-                    summarise(n= n(),
-                        median = median(Value, na.rm = TRUE),
-                            MAD= mad(Value, na.rm = TRUE, constant=1))
+                    summarise(
+#                            n= n(),
+                         median= median(Value, na.rm = TRUE),
+                            MAD= mad(Value, na.rm = TRUE, constant=1),
+                            IQR= IQR(Value, na.rm = TRUE))
     
     
     
@@ -514,8 +529,8 @@ df_summary_median <- reactive({
       df_new_medians <- bind_rows(df_new_medians, df_boostrapped_median)
     }
     
-    df_booted$CI_lo <- tapply(df_new_medians$resampled_median, df_new_medians$Condition, quantile, probs=lower_percentile)
-    df_booted$CI_hi <- tapply(df_new_medians$resampled_median, df_new_medians$Condition, quantile, probs=upper_percentile)
+    df_booted$median_CI_lo <- tapply(df_new_medians$resampled_median, df_new_medians$Condition, quantile, probs=lower_percentile)
+    df_booted$median_CI_hi <- tapply(df_new_medians$resampled_median, df_new_medians$Condition, quantile, probs=upper_percentile)
 
 #    observe({ print(df_booted) })
 
@@ -523,23 +538,6 @@ df_summary_median <- reactive({
   })
  ###################################################
   
-
-##################################################
-#### Caluclate Summary of the DATA for Box (&Violin) ####
-
-df_summary_box <- reactive({
-  df_selected() %>%
-    group_by(Condition) %>% 
-    summarise(n = n(),
-              mean = mean(Value),
-              SD = sd(Value),
-              median = median(Value),
-              MAD = mad(Value, constant=1),
-              IQR = IQR(Value))
-})
-
-#################################################
-
 
  ###########################################
 ######### DEFINE DOWNLOAD BUTTONS ###########
@@ -634,7 +632,7 @@ plotdata <- reactive({
   #    observe({ print(class(input$colour_list)) })
   if (input$color_data == FALSE) {
     kleur <- NULL
-    observe({ print("Kleur <- NULL") })
+#    observe({ print("Kleur <- NULL") })
   } else if (input$color_data == TRUE) {
         kleur <- as.character(input$colour_list)
   }
@@ -674,9 +672,7 @@ plotdata <- reactive({
     
   
   ########## Define minimal n - only plot box/violinplots for min_n>9
-  
-    
-    df_temp <- df_summary_median()
+    df_temp <- df_summary_mean()
     min_n <- min(df_temp$n)
 
  ###############################################
@@ -694,7 +690,7 @@ plotdata <- reactive({
     } else if (input$summaryInput == "violin" && min_n>9) {
       p <- p + geom_violin(data=df_upload_tidy(), aes_string(x=x_choice, y=y_choice, fill=kleur_stats),scale = "width", draw_quantiles = c(0.5), width=0.8, size=0.5, alpha=input$alphaInput_summ) 
       if (input$add_CI == TRUE) {
-        p <- p + geom_linerange(data=df_summary_median(), aes_string(x="Condition", ymin = "CI_lo", ymax = "CI_hi"), colour="black", size =3,alpha=input$alphaInput_summ)
+        p <- p + geom_linerange(data=df_summary_median(), aes_string(x="Condition", ymin = "median_CI_lo", ymax = "median_CI_hi"), colour="black", size =3,alpha=input$alphaInput_summ)
        
       }
     }
@@ -703,8 +699,8 @@ plotdata <- reactive({
     if (input$jitter_type == "beeswarm") {
       p <- p + geom_quasirandom(data=klaas, aes_string(x=x_choice, y=y_choice, colour = kleur), varwidth = TRUE, cex=3, alpha=input$alphaInput)
 
-    } else if (input$jitter_type == "sina") {
-      p <- p + geom_sina(data=klaas, aes_string(x=x_choice, y=y_choice, colour = kleur), method="density", maxwidth = .8, cex=3, alpha=input$alphaInput)
+#Uncomment for sinaplot    } else if (input$jitter_type == "sina") {
+#Uncomment for sinaplot p <- p + geom_sina(data=klaas, aes_string(x=x_choice, y=y_choice, colour = kleur), method="density", maxwidth = .8, cex=3, alpha=input$alphaInput)
       
       
     } else if (input$jitter_type == "random") {
@@ -716,14 +712,14 @@ plotdata <- reactive({
   ##### plot selected data summary (top layer) ####
     if (input$summaryInput == "median"  && input$add_CI == TRUE && min_n>9) {
     p <-  p + geom_point(data=df_summary_median(), aes_string(x="Condition", y = "median", colour=kleur_stats), shape = 21,fill=NA,size = 8,alpha=input$alphaInput_summ)+
-              geom_linerange(data=df_summary_median(), aes_string(x="Condition", ymin = "CI_lo", ymax = "CI_hi", colour=kleur_stats), size =3,alpha=input$alphaInput_summ)
+              geom_linerange(data=df_summary_median(), aes_string(x="Condition", ymin = "median_CI_lo", ymax = "median_CI_hi", colour=kleur_stats), size =3,alpha=input$alphaInput_summ)
     }
 
     else if (input$summaryInput == "median"  && input$add_CI == FALSE || min_n<10) {
       p <-  p + geom_errorbar(data=df_summary_median(), aes_string(x="Condition", ymin="median", ymax="median", colour = kleur_stats), width=.8, size=2, alpha=input$alphaInput_summ)
 
     } else if (input$summaryInput == "mean"  && input$add_CI == TRUE && min_n>9) {
-      p <- p + geom_linerange(data=df_summary_mean(), aes_string(x="Condition", ymin = "CI_lo", ymax = "CI_hi", colour=kleur_stats), size =3,alpha=input$alphaInput_summ)+
+      p <- p + geom_linerange(data=df_summary_mean(), aes_string(x="Condition", ymin = "mean_CI_lo", ymax = "mean_CI_hi", colour=kleur_stats), size =3,alpha=input$alphaInput_summ)+
         geom_point(data=df_summary_mean(), aes_string(x="Condition", y = "mean", colour=kleur_stats), shape = 21,fill=NA,size = 8,alpha=input$alphaInput_summ)
 
     } else if (input$summaryInput == "mean"  && input$add_CI == FALSE || min_n<10) {
@@ -815,24 +811,76 @@ output$downloadData <- downloadHandler(
 ###########################################
 
 
+ ###########################################################
+#### Combine the statistics in one table and filter ###########
+
+df_filtered_stats <- reactive({
+
+  digits <- as.numeric(input$digits)
+  
+  #Combine the numbers from the 95% CI for the mean to show the interval
+  klaas <- df_summary_mean() %>% mutate(mean_CI_lo = round(mean_CI_lo, digits), mean_CI_hi = round(mean_CI_hi, digits)) %>% unite("95CI mean", c("mean_CI_lo","mean_CI_hi"), sep=" - ")
+  observe({ print((klaas)) }) 
+  
+  #Combine the numbers from the 95% CI for the median to show the interval
+  koos <- df_summary_median() %>% mutate(median_CI_lo = round(median_CI_lo, digits), median_CI_hi = round(median_CI_hi, digits)) %>% unite("95CI median", c("median_CI_lo","median_CI_hi"), sep=" - ")
+    
+  klaas  <- full_join(klaas, koos,by="Condition")
+
+    # Round down to the number of selected digits
+    klaas <- klaas %>% mutate_at(c(3:5, 7:9), round, input$digits)
+
+  ##### Show the statistics selected by the user ############  
+    
+  if (!is.null(input$stats_select)) {
+    columns = input$stats_select
+    columns <- c("Condition", "n", columns)
+    df <- klaas %>% select(one_of(columns))
+  } else if (is.null(input$stats_select)) {
+    df <- klaas}
+})
+ ###########################################
+
+ ###########################################################
+#### A predined selection of stats for the table  ###########
+
+observeEvent(input$summaryInput, {
+  if (input$summaryInput=="mean")  {
+    updateSelectInput(session, "stats_select", selected = list("mean", "sd", "95CI mean"))
+  }
+  else if (input$summaryInput=="median")  {
+    updateSelectInput(session, "stats_select", selected = list("median", "MAD", "95CI median"))
+  }
+  else if (input$summaryInput=="boxplot")  {
+    updateSelectInput(session, "stats_select", selected = list("median", "IQR", "95CI median"))
+  }
+  else if (input$summaryInput=="violin")  {
+    updateSelectInput(session, "stats_select", selected = list("median", "95CI median"))
+  }
+  
+})
+
+ ###########################################
+
+
 ###########################################
 #### Render the data summary as a table ###########
 
-output$data_summary <- renderTable({
 
-  df_out <- NULL
-  if (input$summaryInput == "mean") {
-    df_out <- df_summary_mean()
-    df_out$median <- NULL
-  } else if (input$summaryInput == "median") {
-    df_out <- df_summary_median()
-  }  else if (input$summaryInput == "boxplot") {
-    df_out <- df_summary_box()
-  } else if (input$summaryInput == "violin") {
-    df_out <- df_summary_box()
-  } 
-  return(df_out)
-})
+output$data_summary <- renderDataTable(
+ datatable(
+  df_filtered_stats(),
+#  colnames = c(ID = 1),
+  selection = 'none',
+  extensions = c('Buttons', 'ColReorder'),
+  options = list(dom = 'Bfrtip',
+             buttons = c('copy', 'csv', 'print'),
+    editable=FALSE, colReorder = list(realtime = FALSE), columnDefs = list(list(className = 'dt-center', targets = '_all'))
+    ) 
+  ) 
+#   %>% formatRound(n, digits=0)
+) 
+
 ###########################################
 
 } #close "server"
