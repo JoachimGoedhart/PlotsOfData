@@ -102,15 +102,14 @@ ui <- fluidPage(
         #   checkboxInput(inputId = "random_jitter", label = ("Randomize Jitter"), value = TRUE)
         # ),
           
-        radioButtons("summaryInput", "Statistics", choices = list("Median" = "median", "Mean" = "mean", "Boxplot (minimum n=10)" = "boxplot", "Violin Plot (minimum n=10)" = "violin"), selected = "median"),
+        radioButtons("summaryInput", "Statistics", choices = list("Median" = "median", "Mean" = "mean", "Boxplot (minimal n=10)" = "boxplot", "Violin Plot (minimal n=10)" = "violin"), selected = "median"),
 #        sliderInput("Input_CI", "Confidence Level", 90, 100, 95),
-        checkboxInput(inputId = "add_CI", label = HTML("Add 95% CI <br/> (minimum n=10)"), value = FALSE),
+        checkboxInput(inputId = "add_CI", label = HTML("Add 95% CI <br/> (minimal n=10)"), value = FALSE),
 
-#Uncomment for grey box that indicates range
-        # conditionalPanel(
-        #       condition = "input.summaryInput == 'median' || input.summaryInput == 'mean'",
-        # 
-        #         checkboxInput(inputId = "add_bar", label = HTML("Add a bar as visual aid"), value = FALSE)),
+        conditionalPanel(
+              condition = "input.summaryInput == 'median' || input.summaryInput == 'mean'",
+  
+                checkboxInput(inputId = "add_bar", label = HTML("Add a bar as visual aid"), value = FALSE)),
 
         sliderInput("alphaInput_summ", "Visibility of the statistics", 0, 1, 1),
 
@@ -134,8 +133,7 @@ ui <- fluidPage(
         conditionalPanel(
           condition = "input.adjust_scale == true",
           textInput("range", "Range of values (min,max)", value = "")),
-#textInput("range", "Range of values (min,max)", value = "0,2")),
-
+        
                 checkboxInput("color_data", "Use color for the data", value=FALSE),
         checkboxInput("color_stats", "Use color for the stats", value=FALSE),
 
@@ -276,13 +274,13 @@ ui <- fluidPage(
         condition = "input.tabs=='Data Summary'",
         h4("Data summary") ,
         checkboxGroupInput("stats_select", label = h5("Statistics for table:"), 
-                           choices = list("mean", "sd", "sem","95CI mean", "median", "MAD", "IQR", "Q1", "Q3", "95CI median"),
+                           choices = list("mean", "sd", "sem","95CI mean", "median", "MAD","IQR", "95CI median"),
                            selected = "sem"),
         actionButton('select_all1','select all'),
         actionButton('deselect_all1','deselect all'),
         numericInput("digits", "Digits:", 2, min = 0, max = 5)
 #        ,
-#        selectInput("stats_hide2", "Select columns to hide", "", multiple = TRUE, choices=list("mean", "sd", "sem","95CI mean", "median", "MAD", "IQR", "Q1", "Q3", "95CI median")
+#        selectInput("stats_hide2", "Select columns to hide", "", multiple = TRUE, choices=list("mean", "sd", "sem","95CI mean", "median", "MAD","IQR", "95CI median")
       )   
       
         
@@ -426,51 +424,20 @@ observe({
     })
 
 
-#observeEvent(input$add_bar, {
-#  showNotification("clicked!", type = "default")
-#},ignoreNULL = F)
-
 ###### When a bar is added, make sure that the data is still visible
-# observeEvent(input$add_bar, {
-#   if (input$add_bar==TRUE)  {
-#     updateSliderInput(session, "alphaInput", min=0.2, max=1)
-# 
-#   }
-# })
+observeEvent(input$add_bar, {
+  if (input$add_bar==TRUE)  {
+    updateSliderInput(session, "alphaInput", min=0.2, max=1)
 
-
-############# Pop-up appears when a boxplot or violinplot is selected when n<10 ###########
-
-observeEvent(input$summaryInput , {
-  df_temp <- df_summary_mean()
-  min_n <- min(df_temp$n)
-  if (input$summaryInput == "boxplot" && min_n<10) {
-  showModal(modalDialog(
-    title = NULL,
-    "You have selected a boxplot as summary, but one of the conditions has less than 10 datapoints - For n<10 the boxplot is not a suitable summary", easyClose=TRUE, footer = modalButton("Click anywhere to dismiss")
-  ))
-  } else if (input$summaryInput == "violin" && min_n<10) {
-    showModal(modalDialog(
-      title = NULL,
-      "You have selected a violinplot as summary, but one of the conditions has less than 10 datapoints - For n<10 the violinplot is not a suitable summary", easyClose=TRUE, footer = modalButton("Click anywhere to dismiss")
-    ))
   }
 })
 
-############# Pop-up appears when the 95%CI is selected when n<10 ###########
-
-observeEvent(input$add_CI , {
-  df_temp <- df_summary_mean()
-  min_n <- min(df_temp$n)
-
-  if (input$add_CI == TRUE && min_n<10) {
-    showModal(modalDialog(
-      title = NULL,
-      "Confidence Intervals are used to make inferences, but one of the conditions has less than 10 datapoints - It is not recommended to show inferential statistics (CI, sem) for n<10", easyClose=TRUE, footer = modalButton("Click anywhere to dismiss")
-    ))
-  }  
+observeEvent(input$add_bar, {
+  if (input$add_bar==FALSE)  {
+    updateSliderInput(session, "alphaInput", min=0, max=1)
+    
+  }
 })
-
 
  ###################################    
 
@@ -479,11 +446,7 @@ observeEvent(input$add_CI , {
 df_sorted <- reactive({
   
 #  klaas <- df_upload_tidy()
-  klaas <-  df_selected()
-
-   
-
-
+klaas <-  df_selected()
 
    if(input$ordered == "median") {
      klaas$Condition <- reorder(klaas$Condition, klaas$Value, median, na.rm = TRUE)
@@ -494,12 +457,8 @@ df_sorted <- reactive({
    } else if (input$ordered == "alphabet") {
      klaas$Condition <- factor(klaas$Condition, levels=unique(sort(klaas$Condition)))
    }  
-  
 
-  # klaas <- klaas %>% group_by(Condition) %>% summarise(n = n()) %>% mutate(label = paste0(Condition,'\nn = ',n))
-  # klaas$label <- factor(klaas$label)
-
-    return(klaas)
+  return(klaas)
   
 })
 
@@ -523,9 +482,6 @@ df_selected <- reactive({
     } else if (input$tidyInput == FALSE ) {
       koos <- df_upload_tidy() %>% filter(!is.na(Value))
     }
-  
-  
-  
 
     return(koos)
 })
@@ -586,9 +542,7 @@ df_summary_median <- reactive({
 #                            n= n(),
                          median= median(Value, na.rm = TRUE),
                             MAD= mad(Value, na.rm = TRUE, constant=1),
-                            IQR= IQR(Value, na.rm = TRUE),
-                            Q1=quantile(Value, probs=0.25),
-                            Q3=quantile(Value, probs=0.75))
+                            IQR= IQR(Value, na.rm = TRUE))
     
     
     
@@ -669,16 +623,13 @@ plotdata <- reactive({
   
 ####### Read the order from the ordered dataframe #############  
     koos <- df_sorted()
-    
-#   observe({ print(koos) })
-    
     custom_order <-  levels(factor(koos$Condition))
-#    custom_labels <- levels(factor(koos$label))
     
-   observe({ print(custom_order) })
-#   observe({ print(custom_labels) })    
-    width_column <- 0.7
+ #   observe({ print(custom_order) })
+
+    width_column <- 0.8
     
+    if (input$jitter_type == "none") {width_column <- width_column/3}
 
   
   ########## Define alternative color palettes ##########
@@ -754,15 +705,10 @@ plotdata <- reactive({
   ########## Define minimal n - only plot box/violinplots for min_n>9
     df_temp <- df_summary_mean()
     min_n <- min(df_temp$n)
-    
-    ######## Change appearance of plot width under for non-jittered points or segments when n is low #########
-    if (input$jitter_type == "none") {width_column <- width_column/2}
-#    if (input$jitter_type == "stripes" && min_n <10) {width_column <- width_column/2}
 
  ###############################################
 ############## GENERATE PLOT LAYERS #############
 
-    
     p <- ggplot(data=df_selected(), aes_string(x="Condition")) 
     
     # Setting the order of the x-axis
@@ -770,22 +716,26 @@ plotdata <- reactive({
     
     
   ##### Add bar/box as visual aid ######  
-    # if (input$add_bar == TRUE && input$summaryInput == "median") {
-    #   p <- p + stat_summary(data=df_selected(), aes_string(x="Condition", y=y_choice), fun.y = median, fun.ymin = min, fun.ymax = max, geom = "crossbar", width=width_column, color = NA,fill="grey", alpha=input$alphaInput_summ/4)
-    # }
-    # 
-    # if (input$add_bar == TRUE && input$summaryInput == "mean") {
-    #   observe({ print(("Hello")) }) 
-    #   p <- p + stat_summary(data=df_selected(), aes_string(x="Condition", y=y_choice), fun.y = mean, fun.ymin = min, fun.ymax = max, geom = "crossbar", width=width_column, color = NA,fill="grey", alpha=input$alphaInput_summ/4)
-    # }
+    if (input$add_bar == TRUE && input$summaryInput == "median") {
+      p <- p + stat_summary(data=df_selected(), aes_string(x="Condition", y=y_choice), fun.y = median, fun.ymin = min, fun.ymax = max, geom = "crossbar", width=width_column, color = NA,fill="grey", alpha=input$alphaInput_summ/4)
+      
+#      p <- p + geom_bar(data=df_summary_median(), aes_string(x="Condition", y="median", fill = kleur_stats), width=.8, size=0, alpha=input$alphaInput_summ/4, stat="identity")
+    }
+
+    if (input$add_bar == TRUE && input$summaryInput == "mean") {
+      observe({ print(("Hello")) }) 
+#      p <- p + geom_bar(data=df_summary_mean(), aes_string(x="Condition", y="mean", fill = kleur_stats), width=.8, size=0, alpha=input$alphaInput_summ/4, stat="identity")
+      p <- p + stat_summary(data=df_selected(), aes_string(x="Condition", y=y_choice), fun.y = mean, fun.ymin = min, fun.ymax = max, geom = "crossbar", width=width_column, color = NA,fill="grey", alpha=input$alphaInput_summ/4)
+      
+          }
     
     
   ##### plot selected data summary (bottom layer) ####
     if (input$summaryInput == "boxplot" && min_n>9) {
-      p <- p + geom_boxplot(data=df_upload_tidy(), aes_string(x=x_choice, y=y_choice, fill=kleur_stats), notch = input$add_CI, outlier.color=NA, width=width_column, size=0.5, alpha=input$alphaInput_summ)
+      p <- p + geom_boxplot(data=df_upload_tidy(), aes_string(x=x_choice, y=y_choice, fill=kleur_stats), notch = input$add_CI, outlier.color=NA, width=0.8, size=0.5, alpha=input$alphaInput_summ)
   
     } else if (input$summaryInput == "violin" && min_n>9) {
-      p <- p + geom_violin(data=df_upload_tidy(), aes_string(x=x_choice, y=y_choice, fill=kleur_stats),scale = "width", draw_quantiles = c(0.5), width=width_column, size=0.5, alpha=input$alphaInput_summ) 
+      p <- p + geom_violin(data=df_upload_tidy(), aes_string(x=x_choice, y=y_choice, fill=kleur_stats),scale = "width", draw_quantiles = c(0.5), width=0.8, size=0.5, alpha=input$alphaInput_summ) 
       if (input$add_CI == TRUE) {
         p <- p + geom_linerange(data=df_summary_median(), aes_string(x="Condition", ymin = "median_CI_lo", ymax = "median_CI_hi"), colour="black", size =3,alpha=input$alphaInput_summ)
        
@@ -794,21 +744,21 @@ plotdata <- reactive({
 
    #### plot individual measurements (middle layer) ####
     if (input$jitter_type == "beeswarm") {
-      p <- p + geom_quasirandom(data=klaas, aes_string(x=x_choice, y=y_choice, colour = kleur), shape = 16, varwidth = TRUE, cex=3.5, alpha=input$alphaInput)
+      p <- p + geom_quasirandom(data=klaas, aes_string(x=x_choice, y=y_choice, colour = kleur), varwidth = TRUE, cex=3, alpha=input$alphaInput)
 
 #Uncomment for sinaplot    } else if (input$jitter_type == "sina") {
 #Uncomment for sinaplot p <- p + geom_sina(data=klaas, aes_string(x=x_choice, y=y_choice, colour = kleur), method="density", maxwidth = .8, cex=3, alpha=input$alphaInput)
       
       
     } else if (input$jitter_type == "random") {
-      p <- p + geom_jitter(data=klaas, aes_string(x=x_choice, y=y_choice, colour = kleur), shape = 16, width=0.3, height=0.0, cex=3.5, alpha=input$alphaInput)
+      p <- p + geom_jitter(data=klaas, aes_string(x=x_choice, y=y_choice, colour = kleur), width=0.3, height=0.0, cex=3, alpha=input$alphaInput)
     } else if (input$jitter_type == "stripes") {
 
-      p <- p + geom_segment(data=df_sorted(), aes(x=match(Condition, levels(Condition))-((width_column/2)-0.1), xend=match(Condition, levels(Condition))+((width_column/2)-0.1), y=Value, yend=Value), size=1, color="black", alpha=input$alphaInput)
+      p <- p + geom_segment(data=df_sorted(), aes(x=match(Condition, levels(Condition))-0.4, xend=match(Condition, levels(Condition))+0.4, y=Value, yend=Value), color="black", alpha=input$alphaInput)
 
       
     } else if (input$jitter_type == "none") {
-      p <- p + geom_jitter(data=klaas, aes_string(x=x_choice, y=y_choice, colour = kleur), shape = 16, width=0, height=0.0, cex=3.5, alpha=input$alphaInput)
+      p <- p + geom_jitter(data=klaas, aes_string(x=x_choice, y=y_choice, colour = kleur), width=0, height=0.0, cex=3, alpha=input$alphaInput)
     }
     
   ##### plot selected data summary (top layer) ####
@@ -830,10 +780,10 @@ plotdata <- reactive({
       p <- p + geom_errorbar(data=df_summary_mean(), aes_string(x="Condition", ymin="mean", ymax="mean", colour=kleur_stats), width=width_column, size=1, alpha=input$alphaInput_summ)
     }  
     else if (input$summaryInput == "median"  && min_n>9 && input$add_CI == FALSE) {
-      p <-  p + geom_errorbar(data=df_summary_median(), aes_string(x="Condition", ymin="median", ymax="median", colour = kleur_stats), width=width_column, size=2, alpha=input$alphaInput_summ)
+      p <-  p + geom_errorbar(data=df_summary_median(), aes_string(x="Condition", ymin="median", ymax="median", colour = kleur_stats), width=.8, size=2, alpha=input$alphaInput_summ)
     }
     else if (input$summaryInput == "mean"  && min_n>9 && input$add_CI == FALSE) {
-      p <-  p + geom_errorbar(data=df_summary_mean(), aes_string(x="Condition", ymin="mean", ymax="mean", colour = kleur_stats), width=width_column, size=2, alpha=input$alphaInput_summ)
+      p <-  p + geom_errorbar(data=df_summary_mean(), aes_string(x="Condition", ymin="mean", ymax="mean", colour = kleur_stats), width=.8, size=2, alpha=input$alphaInput_summ)
     }
     
     
@@ -845,16 +795,16 @@ plotdata <- reactive({
      p <- p+ theme_light(base_size = 16)
     
 
-    #Adjust scale if range (min,max) is specified
-    if (input$range != "" &&  input$adjust_scale == TRUE) {
-         rng <- as.numeric(strsplit(input$range,",")[[1]])
-    
-    #Autoscale if rangeis NOT specified
-     } else if (input$range == "" || input$adjust_scale == FALSE) {
+ 
+     # if the range of values is specified    
+     if (input$adjust_scale == TRUE && input$range != "") { 
+       rng <- as.numeric(strsplit(input$range,",")[[1]])
+       p <- p + coord_cartesian(ylim=c(rng[1],rng[2]))
+     } else if (input$adjust_scale == FALSE)
+     {
        rng <- c(NULL,NULL)
      }
 
-     p <- p + coord_cartesian(ylim=c(rng[1],rng[2]))
       #### If selected, rotate plot 90 degrees CW ####
      if (input$rotate_plot == TRUE) { p <- p + coord_flip(ylim=c(rng[1],rng[2]))}
     
@@ -944,7 +894,7 @@ df_filtered_stats <- reactive({
   klaas  <- full_join(klaas, koos,by="Condition")
 
     # Round down to the number of selected digits
-    klaas <- klaas %>% mutate_at(c(3:5, 7:11), round, input$digits)
+    klaas <- klaas %>% mutate_at(c(3:5, 7:9), round, input$digits)
 
   ##### Show the statistics selected by the user ############  
     
@@ -977,7 +927,7 @@ observeEvent(input$summaryInput, {
 })
 
 observeEvent(input$select_all1, {
-  updateSelectInput(session, "stats_select", selected = list("mean", "sd", "sem", "95CI mean","median", "MAD", "IQR", "Q1", "Q3", "95CI median"))
+  updateSelectInput(session, "stats_select", selected = list("mean", "sd", "sem", "95CI mean","median", "MAD", "IQR", "95CI median"))
   })
 
 observeEvent(input$deselect_all1, {
@@ -999,7 +949,7 @@ output$data_summary <- renderDataTable(
   selection = 'none',
   extensions = c('Buttons', 'ColReorder'),
   options = list(dom = 'Bfrtip',
-             buttons = c('copy', 'csv','excel', 'pdf'),
+             buttons = c('copy', 'csv', 'pdf'),
     editable=FALSE, colReorder = list(realtime = FALSE), columnDefs = list(list(className = 'dt-center', targets = '_all'))
     ) 
   ) 
