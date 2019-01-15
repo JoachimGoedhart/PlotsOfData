@@ -118,6 +118,7 @@ ui <- fluidPage(
              label= "Order of the data/statistics:",
              choices = list("As supplied" = "none", "By median value" = "median", "By alphabet/number" = "alphabet"),
              selected = "none"),
+
         h4("Plot Layout"),      
 
         checkboxInput(inputId = "rotate_plot",
@@ -146,7 +147,7 @@ ui <- fluidPage(
 
           radioButtons("adjustcolors", "Color palette:", choices = list("Standard" = 1,"Colorblind safe (bright)" = 2,"Colorblind safe (muted)" = 3,"Colorblind safe (light)" = 4, "User defined"=5) , selected =  1),
               conditionalPanel(condition = "input.adjustcolors == 5",
-                 textInput("user_color_list", "List of names or hexadecimal codes", value = "turquoise2,#FF2222,lawngreen"), 
+                 textInput("user_color_list", "Names or hexadecimal codes (applied to conditions in alphabetical order)", value = "turquoise2,#FF2222,lawngreen"), 
                  
                  h5("",
                     a("Click here for more info on color names",
@@ -157,7 +158,7 @@ ui <- fluidPage(
         numericInput("plot_height", "Height (# pixels): ", value = 480),
         numericInput("plot_width", "Width (# pixels):", value = 480),
 
-        h4("Labels"),
+        h4("Labels/captions"),
 
         checkboxInput(inputId = "add_title",
                         label = "Add title",
@@ -181,11 +182,15 @@ ui <- fluidPage(
               condition = "input.adj_fnt_sz == true",
               numericInput("fnt_sz_ttl", "Size axis titles:", value = 24),
               numericInput("fnt_sz_ax", "Size axis labels:", value = 18)),
-        conditionalPanel(
-          condition = "input.color_data == true || input.color_stats == true",
-          checkboxInput(inputId = "add_legend",
-                        label = "Add legend",
-                        value = FALSE))
+checkboxInput(inputId = "add_description",
+              label = "Add figure description",
+              value = FALSE),
+        # conditionalPanel(
+        #   condition = "input.color_data == true || input.color_stats == true",
+        #   checkboxInput(inputId = "add_legend",
+        #                 label = "Add plot legend",
+        #                 value = FALSE)), 
+        NULL
 
     ),
 
@@ -257,8 +262,9 @@ ui <- fluidPage(
                href = "http://thenode.biologists.com/converting-excellent-spreadsheets-tidy-data/education/")),
           selectInput("x_var", "Conditions to compare:", choices = ""),
           selectInput("y_var", "Variables:", choices = ""),
-          selectInput("h_facet", "Separate horizontal:", choices = ""),
-          selectInput("v_facet", "Separate vertical:", choices = "")  
+#         selectInput("h_facet", "Separate horizontal:", choices = ""),
+#         selectInput("v_facet", "Separate vertical:", choices = ""),
+          NULL
           ), 
         
         
@@ -271,7 +277,7 @@ ui <- fluidPage(
         condition = "input.tabs=='About'",
         h4("About")    
       ),
-      
+
       conditionalPanel(
         condition = "input.tabs=='Data Summary'",
         h4("Data summary") ,
@@ -292,13 +298,13 @@ ui <- fluidPage(
        tabsetPanel(id="tabs",
                   tabPanel("Data upload", h4("Data as provided"),
                   dataTableOutput("data_uploaded")),
-                  tabPanel("Plot", downloadButton("downloadPlotPDF", "Download pdf-file"), downloadButton("downloadPlotPNG", "Download png-file"), plotOutput("coolplot")
+                  tabPanel("Plot", downloadButton("downloadPlotPDF", "Download pdf-file"), downloadButton("downloadPlotPNG", "Download png-file"), plotOutput("coolplot", height="100%"), htmlOutput("LegendText", width="200px", inline =FALSE)
                   ), 
                   tabPanel("Data Summary", dataTableOutput('data_summary')
                            ),
                   tabPanel("About", includeHTML("about.html")
                            )
-                  
+                
       )
     )
   )         
@@ -873,7 +879,7 @@ plotdata <- reactive({
     }
      
     #remove legend (if selected)
-    if (input$add_legend == FALSE) {  
+    if (input$add_description == FALSE) {  
       p <- p + theme(legend.position="none")
     }
 
@@ -889,10 +895,9 @@ plotdata <- reactive({
        p <- p+ scale_fill_manual(values=newColors)
    }
     
-     if(input$tidyInput == TRUE && input$h_facet !="." || input$v_facet !=".") {
-#       x <- as.character(input$h_facet)
-       p <- p + facet_grid(reformulate(input$h_facet,input$v_facet))
-     }
+     # if(input$tidyInput == TRUE && input$h_facet !="." || input$v_facet !=".") {
+     #   p <- p + facet_grid(reformulate(input$h_facet,input$v_facet))
+     # }
      
      
     ### Output the plot ######
@@ -1005,6 +1010,70 @@ output$data_summary <- renderDataTable(
   ) 
 #   %>% formatRound(n, digits=0)
 ) 
+
+
+#####################
+#####################
+# *** Print figure legend ***
+output$LegendText <- renderText({
+  
+  if (input$add_description == FALSE) {return(NULL)}
+  
+  df_temp <- df_summary_mean()
+  min_n <- min(df_temp$n)
+
+  if (input$jitter_type == "beeswarm" || input$jitter_type == "random") { jitter <- c("jittered dots")}
+  else if (input$jitter_type == "stripes") {jitter <- c("stripes")}
+  else if (input$jitter_type == "none") {jitter <- ("dots")}
+  
+  if (input$summaryInput == "median" && input$add_CI == FALSE)  { stats <- c("horizontal line indicating the median ")}
+  else if (input$summaryInput == "mean" && input$add_CI == FALSE) {stats <- c("horizontal line indicating the mean ")}
+  else if (input$summaryInput == "boxplot" && input$add_CI == FALSE && min_n>9) {stats <- c("a boxplot, with the box indicating the IQR and horizontal line indicating the median ")}
+  else if (input$summaryInput == "violin" && min_n>9) {stats <- c("a violinplot reflecting the data distribution and a horizontal line indicating the median ")}  
+  
+  
+  else if (input$summaryInput == "median" && input$add_CI == TRUE)  { stats <- c("an open circle indicating the median ")}
+  else if (input$summaryInput == "mean" && input$add_CI == TRUE) {stats <- c("an open circle indicating the mean ")}
+  else if (input$summaryInput == "boxplot" && input$add_CI == TRUE) {stats <- c("a boxplot, with the box indicating the IQR and horizontal line indicating the median ")}
+
+  if (input$add_CI == TRUE && min_n>9 && input$summaryInput != "boxplot" && input$summaryInput != "mean") {stat_inf <- c(" A vertical bar indicates for each median the 95% confidence interval determined by bootstrapping. ")}
+  else if (input$add_CI == TRUE && min_n>9 && input$summaryInput == "boxplot") {stat_inf <- c("The notches represent for each median the 95% confidence interval (approximated by 1.58*IQR/sqrt(n)). ")}
+  else if (input$add_CI == TRUE && min_n>9 && input$summaryInput == "mean") {stat_inf <- c(" A vertical bar indicates for each mean the 95% confidence interval. ")}
+  else {stat_inf <- NULL}
+  
+  
+  Legend <- c('</br></br><h4>Figure description</h4>')
+  
+  #The width of the legend (style as a paragraph between <p></p>) is adjusted to the width of the plot
+  
+  Legend<-append(Legend, paste('<p style="width:',input$plot_width,'px;padding: 0px 15px 0px 40px">Graph that shows the data', sep=""))
+
+  Legend<-append(Legend, paste("as ", jitter," (visibility: ", input$alphaInput, "). ", sep=""))
+
+  Legend<-append(Legend, paste("The summary of the data is shown as ", stats," (visibility: ", input$alphaInput_summ, "). ", sep=""))
+  
+  Legend <-append(Legend, paste(stat_inf, sep=""))
+  
+  if (input$color_data ==TRUE || input$color_stats) {Legend<-append(Legend, "The color coding is indicated in the legend next to the plot. ")		}
+  
+  if (input$ordered =="median") {Legend<-append(Legend, "The data are ordered according to their median value. ")		}
+  
+  Legend <- append(Legend, paste("</p>")) 
+  return(Legend)
+  
+
+
+  })
+#####################
+#####################
+
+
+
+
+
+
+
+
 
 ###########################################
 

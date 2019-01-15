@@ -31,6 +31,11 @@ Or download it to use it offline:
 This should launch a web browser with the Shiny app.
 Note that the app depends on several R packages that need to be installed (shiny, ggplot2, dplyr, tidyr, readr, magrittr, ggbeeswarm, readxl)
 
+### Background info
+
+Videos that highlight several of the features of PlotsOfData are [available on YouTube](https://bit.ly/2FteV34)
+
+Some aspects of the app are explained in [blogs at The Node](http://thenode.biologists.com/author/joachimg/)
 
 ### Credits
 
