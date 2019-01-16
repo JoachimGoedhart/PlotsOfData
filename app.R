@@ -249,28 +249,42 @@ checkboxInput(inputId = "add_description",
                          "Comma" = ",",
                          "Semicolon" = ";"),
                           selected = "\t")),
-        conditionalPanel(
-          condition = "input.tidyInput==false",        selectInput("data_remove", "Select columns to remove", "", multiple = TRUE)),
-        
         checkboxInput(inputId = "tidyInput",
                       label = "These data are Tidy",
                       value = FALSE),
         conditionalPanel(
+          condition = "input.tidyInput==false",        selectInput("data_remove", "Select columns to remove", "", multiple = TRUE)),
+        
+
+        conditionalPanel(
           condition = "input.tidyInput==true",
-          h5("",
-             a("Click here for more info on tidy data",
-               href = "http://thenode.biologists.com/converting-excellent-spreadsheets-tidy-data/education/")),
+
           selectInput("x_var", "Conditions to compare:", choices = ""),
           selectInput("y_var", "Variables:", choices = ""),
 #         selectInput("h_facet", "Separate horizontal:", choices = ""),
 #         selectInput("v_facet", "Separate vertical:", choices = ""),
+
+
+
           NULL
           ), 
         
         
         
         conditionalPanel(
-          condition = "input.tidyInput==false", (downloadButton("downloadData", "Download in tidy format (csv)")))
+          condition = "input.tidyInput==false", (downloadButton("downloadData", "Download in tidy format (csv)"))),
+
+        hr(),
+
+        checkboxInput(inputId = "info_data",
+                      label = "Show information on data formats",
+                      value = FALSE),
+
+        conditionalPanel(
+          condition = "input.info_data==true",
+              img(src = 'Data_format.png', width = '300px'), h5(""), a("Background info for converting wide data to tidy format", href = "http://thenode.biologists.com/converting-excellent-spreadsheets-tidy-data/education/")
+          )
+
       ),
       
       conditionalPanel(
