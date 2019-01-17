@@ -129,11 +129,14 @@ ui <- fluidPage(
                       label = "Remove gridlines",
                       value = FALSE),
 
-        checkboxInput(inputId = "adjust_scale",
-                      label = "Adjust scale",
+        checkboxInput(inputId = "change_scale",
+                      label = "Change scale",
                       value = FALSE),
         conditionalPanel(
-          condition = "input.adjust_scale == true",
+          checkboxInput(inputId = "scale_log_10",
+                        label = "Log scale",
+                        value = FALSE),
+          condition = "input.change_scale == true",
           textInput("range", "Range of values (min,max)", value = "")),
 #textInput("range", "Range of values (min,max)", value = "0,2")),
 
@@ -282,7 +285,7 @@ checkboxInput(inputId = "add_description",
 
         conditionalPanel(
           condition = "input.info_data==true",
-              img(src = 'Data_format.png', width = '300px'), h5(""), a("Background info for converting wide data to tidy format", href = "http://thenode.biologists.com/converting-excellent-spreadsheets-tidy-data/education/")
+              img(src = 'Data_format.png', width = '100%'), h5(""), a("Background info for converting wide data to tidy format", href = "http://thenode.biologists.com/converting-excellent-spreadsheets-tidy-data/education/")
           )
 
       ),
@@ -865,12 +868,19 @@ plotdata <- reactive({
      p <- p+ theme_light(base_size = 16)
     
 
+     # if log-scale checked specified
+     if (input$scale_log_10)
+       p <- p + scale_y_log10() 
+     
     #Adjust scale if range (min,max) is specified
-    if (input$range != "" &&  input$adjust_scale == TRUE) {
+    if (input$range != "" &&  input$change_scale == TRUE) {
          rng <- as.numeric(strsplit(input$range,",")[[1]])
+         
+         #If min>max invert the axis
+         if (rng[1]>rng[2]) {p <- p+ scale_y_reverse()}
     
     #Autoscale if rangeis NOT specified
-     } else if (input$range == "" || input$adjust_scale == FALSE) {
+     } else if (input$range == "" || input$change_scale == FALSE) {
        rng <- c(NULL,NULL)
      }
 
@@ -1071,6 +1081,8 @@ output$LegendText <- renderText({
   if (input$color_data ==TRUE || input$color_stats) {Legend<-append(Legend, "The color coding is indicated in the legend next to the plot. ")		}
   
   if (input$ordered =="median") {Legend<-append(Legend, "The data are ordered according to their median value. ")		}
+  
+  if (input$scale_log_10) {Legend<-append(Legend, "The values are plotted on a log10 scale. ")		}
   
   Legend <- append(Legend, paste("</p>")) 
   return(Legend)
