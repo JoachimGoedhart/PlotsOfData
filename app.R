@@ -82,19 +82,6 @@ df_tidy_example <- read.csv("Data_tidy_example.csv", na.strings = "")
 
 ui <- fluidPage(
   
-  # tags$head(
-  #   tags$style(HTML("
-  #                   
-  #                   .affix {
-  #                   top:50px;
-  #                   position:fixed;
-  #                   }
-  #                   
-  #                   "))
-  #   ),
-  
-  
-  
   titlePanel("PlotsOfData - Plots all Of the Data"),
   sidebarLayout(
     sidebarPanel(width=3,
@@ -1073,6 +1060,15 @@ output$LegendText <- renderText({
   
   if (input$add_description == FALSE) {return(NULL)}
   
+  if (input$rotate_plot == FALSE) {
+    x <- "horizontal"
+    y <- "vertical"
+    }
+  else if (input$rotate_plot == TRUE) {
+    x <- "vertical"
+    y <- "horizontal"
+    }
+  
   df_temp <- df_summary_mean()
   min_n <- min(df_temp$n)
 
@@ -1080,19 +1076,19 @@ output$LegendText <- renderText({
   else if (input$jitter_type == "stripes") {jitter <- c("stripes")}
   else if (input$jitter_type == "none") {jitter <- ("dots")}
   
-  if (input$summaryInput == "median" && input$add_CI == FALSE)  { stats <- c("horizontal line indicating the median ")}
-  else if (input$summaryInput == "mean" && input$add_CI == FALSE) {stats <- c("horizontal line indicating the mean ")}
-  else if (input$summaryInput == "boxplot" && input$add_CI == FALSE && min_n>9) {stats <- c("a boxplot, with the box indicating the IQR and horizontal line indicating the median ")}
-  else if (input$summaryInput == "violin" && min_n>9) {stats <- c("a violinplot reflecting the data distribution and a horizontal line indicating the median ")}  
+  if (input$summaryInput == "median" && input$add_CI == FALSE)  { stats <- paste(x," line indicating the median ")}
+  else if (input$summaryInput == "mean" && input$add_CI == FALSE) {stats <- paste(x," line indicating the mean ")}
+  else if (input$summaryInput == "boxplot" && input$add_CI == FALSE && min_n>9) {stats <- paste("a boxplot, with the box indicating the IQR and ", x," line indicating the median ")}
+  else if (input$summaryInput == "violin" && min_n>9) {stats <- paste("a violinplot reflecting the data distribution and a ", x," line indicating the median ")}  
   
   
   else if (input$summaryInput == "median" && input$add_CI == TRUE)  { stats <- c("an open circle indicating the median ")}
   else if (input$summaryInput == "mean" && input$add_CI == TRUE) {stats <- c("an open circle indicating the mean ")}
-  else if (input$summaryInput == "boxplot" && input$add_CI == TRUE) {stats <- c("a boxplot, with the box indicating the IQR and horizontal line indicating the median ")}
+  else if (input$summaryInput == "boxplot" && input$add_CI == TRUE) {stats <- paste("a boxplot, with the box indicating the IQR and ", x," line indicating the median ")}
 
-  if (input$add_CI == TRUE && min_n>9 && input$summaryInput != "boxplot" && input$summaryInput != "mean") {stat_inf <- c(" A vertical bar indicates for each median the 95% confidence interval determined by bootstrapping. ")}
+  if (input$add_CI == TRUE && min_n>9 && input$summaryInput != "boxplot" && input$summaryInput != "mean") {stat_inf <- paste(" A ", y," bar indicates for each median the 95% confidence interval determined by bootstrapping. ")}
   else if (input$add_CI == TRUE && min_n>9 && input$summaryInput == "boxplot") {stat_inf <- c("The notches represent for each median the 95% confidence interval (approximated by 1.58*IQR/sqrt(n)). ")}
-  else if (input$add_CI == TRUE && min_n>9 && input$summaryInput == "mean") {stat_inf <- c(" A vertical bar indicates for each mean the 95% confidence interval. ")}
+  else if (input$add_CI == TRUE && min_n>9 && input$summaryInput == "mean") {stat_inf <- c(" A ", y," bar indicates for each mean the 95% confidence interval. ")}
   else {stat_inf <- NULL}
   
   
@@ -1103,6 +1099,11 @@ output$LegendText <- renderText({
   Legend<-append(Legend, paste('<p style="width:',input$plot_width,'px;padding: 0px 15px 0px 40px">Graph that shows the data', sep=""))
 
   Legend<-append(Legend, paste("as ", jitter," (visibility: ", input$alphaInput, "). ", sep=""))
+  
+  #Concatenate the condition with n
+  koos <- df_summary_mean() %>% unite(label_n, c(Condition, n), sep="=", remove = FALSE)
+  label_n <- paste(koos$label_n,collapse=", ")
+  Legend <-append(Legend, paste("The number of samples per condition is: " ,label_n, ". ",sep=""))
 
   Legend<-append(Legend, paste("The summary of the data is shown as ", stats," (visibility: ", input$alphaInput_summ, "). ", sep=""))
   
@@ -1114,8 +1115,16 @@ output$LegendText <- renderText({
   
   if (input$scale_log_10) {Legend<-append(Legend, "The values are plotted on a log10 scale. ")		}
   
+
+  
+  
   Legend <- append(Legend, paste("</p>")) 
   return(Legend)
+  
+
+  
+  
+  
   
 
 
