@@ -81,6 +81,20 @@ df_tidy_example <- read.csv("Data_tidy_example.csv", na.strings = "")
 ###### Define the User interface #########
 
 ui <- fluidPage(
+  
+  # tags$head(
+  #   tags$style(HTML("
+  #                   
+  #                   .affix {
+  #                   top:50px;
+  #                   position:fixed;
+  #                   }
+  #                   
+  #                   "))
+  #   ),
+  
+  
+  
   titlePanel("PlotsOfData - Plots all Of the Data"),
   sidebarLayout(
     sidebarPanel(width=3,
@@ -315,7 +329,7 @@ checkboxInput(inputId = "add_description",
        tabsetPanel(id="tabs",
                   tabPanel("Data upload", h4("Data as provided"),
                   dataTableOutput("data_uploaded")),
-                  tabPanel("Plot", downloadButton("downloadPlotPDF", "Download pdf-file"), downloadButton("downloadPlotPNG", "Download png-file"), plotOutput("coolplot", height="100%"), htmlOutput("LegendText", width="200px", inline =FALSE)
+                  tabPanel("Plot", downloadButton("downloadPlotPDF", "Download pdf-file"), downloadButton("downloadPlotPNG", "Download png-file"), div(`data-spy`="affix", `data-offset-top`="10", plotOutput("coolplot", height="100%"), htmlOutput("LegendText", width="200px", inline =FALSE))
                   ), 
                   tabPanel("Data Summary", dataTableOutput('data_summary')
                            ),
@@ -462,7 +476,7 @@ observe({
 # })
 
  ######################################################
-########### GET INPUTE VARIABLE FROM HTML ##############
+########### GET INPUT VARIABLE FROM HTML ##############
 
 # Add ?input=3&tidy=TRUE to set input type to paste and tidy format to TRUE:
 #
