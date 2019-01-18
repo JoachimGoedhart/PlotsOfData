@@ -461,6 +461,22 @@ observe({
 #   }
 # })
 
+ ######################################################
+########### GET INPUTE VARIABLE FROM HTML ##############
+
+# Add ?input=3&tidy=TRUE to set input type to paste and tidy format to TRUE:
+#
+
+observe({
+  query <- parseQueryString(session$clientData$url_search)
+  if (!is.null(query[['tidy']])) {
+    updateCheckboxInput(session, "tidyInput", value = query[['tidy']])
+  }
+  if (!is.null(query[['input']])) {
+    updateRadioButtons(session, "data_input", selected = query[['input']])
+  }
+})
+
 
 ############# Pop-up appears when a boxplot or violinplot is selected when n<10 ###########
 
