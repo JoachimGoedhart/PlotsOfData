@@ -39,6 +39,7 @@ library(magrittr)
 library(ggbeeswarm)
 library(readxl)
 library(DT)
+#library(RCurl)
 
 #Uncomment for sinaplot
 #library(ggforce)
@@ -87,11 +88,11 @@ ui <- fluidPage(
     sidebarPanel(width=3,
       conditionalPanel(
         condition = "input.tabs=='Plot'",
-        radioButtons("jitter_type", "Data offset", choices = list("Quasirandom" = "beeswarm", 
+        radioButtons("jitter_type", "Data offset", choices = list("Quasirandom" = "quasirandom", 
 #Uncomment for sinaplot                                           "Sinaplot" = "sina", 
                                                                   "Random" = "random", 
                                                                   "None; stripes" = "stripes",
-                                                                  "None (for small n)" = "none"), selected = "beeswarm"),
+                                                                  "None (for small n)" = "none"), selected = "quasirandom"),
         
         
         
@@ -103,7 +104,7 @@ ui <- fluidPage(
         #   checkboxInput(inputId = "random_jitter", label = ("Randomize Jitter"), value = TRUE)
         # ),
           
-        radioButtons("summaryInput", "Statistics", choices = list("Median" = "median", "Mean" = "mean", "Boxplot (minimum n=10)" = "boxplot", "Violin Plot (minimum n=10)" = "violin"), selected = "median"),
+        radioButtons("summaryInput", "Statistics", choices = list("Median" = "median", "Mean" = "mean", "Boxplot (minimum n=10)" = "box", "Violin Plot (minimum n=10)" = "violin"), selected = "median"),
 #        sliderInput("Input_CI", "Confidence Level", 90, 100, 95),
         checkboxInput(inputId = "add_CI", label = HTML("Add 95% CI <br/> (minimum n=10)"), value = FALSE),
 
@@ -116,7 +117,7 @@ ui <- fluidPage(
         sliderInput("alphaInput_summ", "Visibility of the statistics", 0, 1, 1),
 
         radioButtons(inputId = "ordered",
-             label= "Order of the data/statistics:",
+             label= "Order of the conditions:",
              choices = list("As supplied" = "none", "By median value" = "median", "By alphabet/number" = "alphabet"),
              selected = "none"),
 
@@ -133,15 +134,14 @@ ui <- fluidPage(
         checkboxInput(inputId = "change_scale",
                       label = "Change scale",
                       value = FALSE),
-        conditionalPanel(
+        conditionalPanel(condition = "input.change_scale == true",
           checkboxInput(inputId = "scale_log_10",
                         label = "Log scale",
                         value = FALSE),
-          condition = "input.change_scale == true",
-          textInput("range", "Range of values (min,max)", value = "")),
-#textInput("range", "Range of values (min,max)", value = "0,2")),
 
-                checkboxInput("color_data", "Use color for the data", value=FALSE),
+          textInput("range", "Range of values (min,max)", value = "")),
+
+        checkboxInput("color_data", "Use color for the data", value=FALSE),
         checkboxInput("color_stats", "Use color for the stats", value=FALSE),
 
         conditionalPanel(
@@ -207,7 +207,9 @@ checkboxInput(inputId = "add_description",
             list("Example 1 (wide format)" = 1,
                  "Example 2 (tidy format)" = 2,
                  "Upload file" = 3,
-                 "Paste data" = 4)
+                 "Paste data" = 4
+                 # "Online source" = 5
+                 )
           ,
           selected =  1),
         conditionalPanel(
@@ -253,13 +255,22 @@ checkboxInput(inputId = "add_description",
                          "Comma" = ",",
                          "Semicolon" = ";"),
                           selected = "\t")),
+        
+### csv via URL as input      
+              conditionalPanel(
+                condition = "input.data_input=='5'",
+      #         textInput("URL", "URL", value = "https://zenodo.org/record/2545922/files/FRET-efficiency_mTq2.csv"), 
+                textInput("URL", "URL", value = ""), 
+                NULL
+                ),
+        
         checkboxInput(inputId = "tidyInput",
                       label = "These data are Tidy",
                       value = FALSE),
-        conditionalPanel(
-          condition = "input.tidyInput==false",        selectInput("data_remove", "Select columns to remove", "", multiple = TRUE)),
         
-
+        conditionalPanel(
+          condition = "input.tidyInput==false", selectInput("data_remove", "Select columns to remove", "", multiple = TRUE)),
+        
         conditionalPanel(
           condition = "input.tidyInput==true",
 
@@ -267,8 +278,6 @@ checkboxInput(inputId = "add_description",
           selectInput("y_var", "Variables:", choices = ""),
 #         selectInput("h_facet", "Separate horizontal:", choices = ""),
 #         selectInput("v_facet", "Separate vertical:", choices = ""),
-
-
 
           NULL
           ), 
@@ -359,6 +368,18 @@ server <- function(input, output, session) {
           } 
         })
       }
+    } else if (input$data_input == 5) {
+      
+      data <- read_csv(input$URL)
+      
+      # This requires RCurl
+      # if (url.exists(input$URL) == FALSE || input$URL == "") {
+      #   return(data.frame(x = "Not a valid URL"))
+      # } else {data <- read_csv(input$URL)}
+
+
+      
+      
     } else if (input$data_input == 4) {
       if (input$data_paste == "") {
         data <- data.frame(x = "Copy your data into the textbox,
@@ -463,20 +484,65 @@ observe({
 # })
 
  ######################################################
-########### GET INPUT VARIABLE FROM HTML ##############
+########### GET INPUT VARIABLEs FROM HTML ##############
 
 # Add ?input=3&tidy=TRUE to set input type to paste and tidy format to TRUE:
 #
 
 observe({
   query <- parseQueryString(session$clientData$url_search)
-  if (!is.null(query[['tidy']])) {
-    updateCheckboxInput(session, "tidyInput", value = query[['tidy']])
+  if (!is.null(query[['data']])) {
+    presets_data <- query[['data']]
+    presets_data <- unlist(strsplit(presets_data,";"))
+    observe(print((presets_data)))
+    
+    updateRadioButtons(session, "data_input", selected = presets_data[1])    
+    updateCheckboxInput(session, "tidyInput", value = presets_data[2])
   }
-  if (!is.null(query[['input']])) {
-    updateRadioButtons(session, "data_input", selected = query[['input']])
+
+  if (!is.null(query[['vis']])) {
+
+  presets_vis <- query[['vis']]
+  presets_vis <- unlist(strsplit(presets_vis,";"))
+  observe(print((presets_vis)))
+  
+  #radio, slider, radio, check, slider
+  updateRadioButtons(session, "jitter_type", selected = presets_vis[1])
+  updateSliderInput(session, "alphaInput", value = presets_vis[2])
+  updateRadioButtons(session, "summaryInput", selected = presets_vis[3])
+  updateCheckboxInput(session, "add_CI", value = presets_vis[4])
+  updateSliderInput(session, "alphaInput_summ", value = presets_vis[5])
+  updateRadioButtons(session, "ordered", selected = presets_vis[6])
+#  updateTabsetPanel(session, "tabs", selected = "Plot")
   }
+  
+  if (!is.null(query[['layout']])) {
+    
+    presets_layout <- query[['layout']]
+    presets_layout <- unlist(strsplit(presets_layout,";"))
+    observe(print((presets_layout)))
+
+
+    updateCheckboxInput(session, "rotate_plot", value = presets_layout[1])
+    updateCheckboxInput(session, "no_grid", value = (presets_layout[2]))
+
+    updateCheckboxInput(session, "change_scale", value = presets_layout[3])
+    updateCheckboxInput(session, "scale_log_10", value = presets_layout[4])
+     updateTextInput(session, "range", value= presets_layout[5])
+     updateCheckboxInput(session, "color_data", value = presets_layout[6])
+     updateCheckboxInput(session, "color_stats", value = presets_layout[7])
+     updateRadioButtons(session, "adjustcolors", selected = presets_layout[8])    
+     updateCheckboxInput(session, "add_description", value = presets_layout[9])
+
+    #  updateTabsetPanel(session, "tabs", selected = "Plot")
+  }
+  
+  
+  
+  
 })
+
+
 
 
 ############# Pop-up appears when a boxplot or violinplot is selected when n<10 ###########
@@ -484,7 +550,7 @@ observe({
 observeEvent(input$summaryInput , {
   df_temp <- df_summary_mean()
   min_n <- min(df_temp$n)
-  if (input$summaryInput == "boxplot" && min_n<10) {
+  if (input$summaryInput == "box" && min_n<10) {
   showModal(modalDialog(
     title = NULL,
     "You have selected a boxplot as summary, but one of the conditions has less than 10 datapoints - For n<10 the boxplot is not a suitable summary", easyClose=TRUE, footer = modalButton("Click anywhere to dismiss")
@@ -782,7 +848,7 @@ plotdata <- reactive({
   #    observe({ print(class(input$colour_list)) })
   if (input$color_stats == FALSE) {
     kleur_stats <- NULL
-  } else if (input$color_stats == TRUE && input$summaryInput == "boxplot") {
+  } else if (input$color_stats == TRUE && input$summaryInput == "box") {
     kleur_stats <- x_choice
   } else if (input$color_stats == TRUE && input$summaryInput == "violin") {
     kleur_stats <- x_choice
@@ -821,7 +887,7 @@ plotdata <- reactive({
     
     
   ##### plot selected data summary (bottom layer) ####
-    if (input$summaryInput == "boxplot" && min_n>9) {
+    if (input$summaryInput == "box" && min_n>9) {
       p <- p + geom_boxplot(data=df_upload_tidy(), aes_string(x=x_choice, y=y_choice, fill=kleur_stats), notch = input$add_CI, outlier.color=NA, width=width_column, size=0.5, alpha=input$alphaInput_summ)
   
     } else if (input$summaryInput == "violin" && min_n>9) {
@@ -833,7 +899,7 @@ plotdata <- reactive({
     }
 
    #### plot individual measurements (middle layer) ####
-    if (input$jitter_type == "beeswarm") {
+    if (input$jitter_type == "quasirandom") {
       p <- p + geom_quasirandom(data=klaas, aes_string(x=x_choice, y=y_choice, colour = kleur), shape = 16, varwidth = TRUE, cex=3.5, alpha=input$alphaInput)
 
 #Uncomment for sinaplot    } else if (input$jitter_type == "sina") {
@@ -1013,7 +1079,7 @@ observeEvent(input$summaryInput, {
   else if (input$summaryInput=="median")  {
     updateSelectInput(session, "stats_select", selected = list("median", "MAD", "95CI median"))
   }
-  else if (input$summaryInput=="boxplot")  {
+  else if (input$summaryInput=="box")  {
     updateSelectInput(session, "stats_select", selected = list("median", "IQR", "95CI median"))
   }
   else if (input$summaryInput=="violin")  {
@@ -1036,7 +1102,7 @@ observeEvent(input$deselect_all1, {
 
 ###########################################
 #### Render the data summary as a table ###########
-
+  
 
 output$data_summary <- renderDataTable(
  datatable(
@@ -1072,22 +1138,22 @@ output$LegendText <- renderText({
   df_temp <- df_summary_mean()
   min_n <- min(df_temp$n)
 
-  if (input$jitter_type == "beeswarm" || input$jitter_type == "random") { jitter <- c("jittered dots")}
+  if (input$jitter_type == "quasirandom" || input$jitter_type == "random") { jitter <- c("jittered dots")}
   else if (input$jitter_type == "stripes") {jitter <- c("stripes")}
   else if (input$jitter_type == "none") {jitter <- ("dots")}
   
   if (input$summaryInput == "median" && input$add_CI == FALSE)  { stats <- paste(x," line indicating the median ")}
   else if (input$summaryInput == "mean" && input$add_CI == FALSE) {stats <- paste(x," line indicating the mean ")}
-  else if (input$summaryInput == "boxplot" && input$add_CI == FALSE && min_n>9) {stats <- paste("a boxplot, with the box indicating the IQR and ", x," line indicating the median ")}
+  else if (input$summaryInput == "box" && input$add_CI == FALSE && min_n>9) {stats <- paste("a boxplot, with the box indicating the IQR and ", x," line indicating the median ")}
   else if (input$summaryInput == "violin" && min_n>9) {stats <- paste("a violinplot reflecting the data distribution and a ", x," line indicating the median ")}  
   
   
   else if (input$summaryInput == "median" && input$add_CI == TRUE)  { stats <- c("an open circle indicating the median ")}
   else if (input$summaryInput == "mean" && input$add_CI == TRUE) {stats <- c("an open circle indicating the mean ")}
-  else if (input$summaryInput == "boxplot" && input$add_CI == TRUE) {stats <- paste("a boxplot, with the box indicating the IQR and ", x," line indicating the median ")}
+  else if (input$summaryInput == "box" && input$add_CI == TRUE) {stats <- paste("a boxplot, with the box indicating the IQR and ", x," line indicating the median ")}
 
-  if (input$add_CI == TRUE && min_n>9 && input$summaryInput != "boxplot" && input$summaryInput != "mean") {stat_inf <- paste(" A ", y," bar indicates for each median the 95% confidence interval determined by bootstrapping. ")}
-  else if (input$add_CI == TRUE && min_n>9 && input$summaryInput == "boxplot") {stat_inf <- c("The notches represent for each median the 95% confidence interval (approximated by 1.58*IQR/sqrt(n)). ")}
+  if (input$add_CI == TRUE && min_n>9 && input$summaryInput != "box" && input$summaryInput != "mean") {stat_inf <- paste(" A ", y," bar indicates for each median the 95% confidence interval determined by bootstrapping. ")}
+  else if (input$add_CI == TRUE && min_n>9 && input$summaryInput == "box") {stat_inf <- c("The notches represent for each median the 95% confidence interval (approximated by 1.58*IQR/sqrt(n)). ")}
   else if (input$add_CI == TRUE && min_n>9 && input$summaryInput == "mean") {stat_inf <- c(" A ", y," bar indicates for each mean the 95% confidence interval. ")}
   else {stat_inf <- NULL}
   
@@ -1115,18 +1181,10 @@ output$LegendText <- renderText({
   
   if (input$scale_log_10) {Legend<-append(Legend, "The values are plotted on a log10 scale. ")		}
   
-
-  
-  
   Legend <- append(Legend, paste("</p>")) 
+
   return(Legend)
   
-
-  
-  
-  
-  
-
 
   })
 #####################
