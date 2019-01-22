@@ -98,12 +98,6 @@ ui <- fluidPage(
         
         sliderInput("alphaInput", "Visibility of the data", 0, 1, 0.3),
 
-        # conditionalPanel(
-        #   condition = "input.adjust_jitter == true",
-        #   sliderInput("jitter_width", "Width:", 0,0.5,0.3),
-        #   checkboxInput(inputId = "random_jitter", label = ("Randomize Jitter"), value = TRUE)
-        # ),
-          
         radioButtons("summaryInput", "Statistics", choices = list("Median" = "median", "Mean" = "mean", "Boxplot (minimum n=10)" = "box", "Violin Plot (minimum n=10)" = "violin"), selected = "median"),
 #        sliderInput("Input_CI", "Confidence Level", 90, 100, 95),
         checkboxInput(inputId = "add_CI", label = HTML("Add 95% CI <br/> (minimum n=10)"), value = FALSE),
@@ -189,11 +183,6 @@ ui <- fluidPage(
 checkboxInput(inputId = "add_description",
               label = "Add figure description",
               value = FALSE),
-        # conditionalPanel(
-        #   condition = "input.color_data == true || input.color_stats == true",
-        #   checkboxInput(inputId = "add_legend",
-        #                 label = "Add plot legend",
-        #                 value = FALSE)), 
         NULL
 
     ),
