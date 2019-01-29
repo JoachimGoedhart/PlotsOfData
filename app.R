@@ -39,7 +39,7 @@ library(magrittr)
 library(ggbeeswarm)
 library(readxl)
 library(DT)
-#library(RCurl)
+library(RCurl)
 
 #Uncomment for sinaplot
 #library(ggforce)
@@ -99,7 +99,6 @@ ui <- fluidPage(
         sliderInput("alphaInput", "Visibility of the data", 0, 1, 0.3),
 
         radioButtons("summaryInput", "Statistics", choices = list("Median" = "median", "Mean" = "mean", "Boxplot (minimum n=10)" = "box", "Violin Plot (minimum n=10)" = "violin"), selected = "median"),
-#        sliderInput("Input_CI", "Confidence Level", 90, 100, 95),
         checkboxInput(inputId = "add_CI", label = HTML("Add 95% CI <br/> (minimum n=10)"), value = FALSE),
 
 #Uncomment for grey box that indicates range
@@ -145,7 +144,7 @@ ui <- fluidPage(
 
           radioButtons("adjustcolors", "Color palette:", choices = list("Standard" = 1,"Colorblind safe (bright)" = 2,"Colorblind safe (muted)" = 3,"Colorblind safe (light)" = 4, "User defined"=5) , selected =  1),
               conditionalPanel(condition = "input.adjustcolors == 5",
-                 textInput("user_color_list", "Names or hexadecimal codes (applied to conditions in alphabetical order)", value = "turquoise2,#FF2222,lawngreen"), 
+                 textInput("user_color_list", "Names or hexadecimal codes (applied to conditions in alphabetical order):", value = "turquoise2,#FF2222,lawngreen"), 
                  
                  h5("",
                     a("Click here for more info on color names",
@@ -196,8 +195,8 @@ checkboxInput(inputId = "add_description",
             list("Example 1 (wide format)" = 1,
                  "Example 2 (tidy format)" = 2,
                  "Upload file" = 3,
-                 "Paste data" = 4
-                 # "Online source" = 5
+                 "Paste data" = 4,
+                 "URL (csv files only)" = 5
                  )
           ,
           selected =  1),
@@ -307,16 +306,23 @@ checkboxInput(inputId = "add_description",
 #        selectInput("stats_hide2", "Select columns to hide", "", multiple = TRUE, choices=list("mean", "sd", "sem","95CI mean", "median", "MAD", "IQR", "Q1", "Q3", "95CI median")
       )   
       
-        
     ),
     mainPanel(
  
        tabsetPanel(id="tabs",
                   tabPanel("Data upload", h4("Data as provided"),
                   dataTableOutput("data_uploaded")),
-                  tabPanel("Plot", downloadButton("downloadPlotPDF", "Download pdf-file"), downloadButton("downloadPlotPNG", "Download png-file"), div(`data-spy`="affix", `data-offset-top`="10", plotOutput("coolplot", height="100%"), htmlOutput("LegendText", width="200px", inline =FALSE))
+                  tabPanel("Plot", downloadButton("downloadPlotPDF", "Download pdf-file"),
+                           downloadButton("downloadPlotPNG", "Download png-file"), 
+                           actionButton("settings_copy", icon = icon("clone"),
+                                        label = "Clone current setting"),
+                                        
+                                        div(`data-spy`="affix", `data-offset-top`="10", plotOutput("coolplot", height="100%"),
+                                            htmlOutput("LegendText", width="200px", inline =FALSE),
+#                                            htmlOutput("HTMLpreset"),
+                                            NULL)
                   ), 
-                  tabPanel("Data Summary", dataTableOutput('data_summary')
+                  tabPanel("Data Summary",dataTableOutput('data_summary')
                            ),
                   tabPanel("About", includeHTML("about.html")
                            )
@@ -359,12 +365,12 @@ server <- function(input, output, session) {
       }
     } else if (input$data_input == 5) {
       
-      data <- read_csv(input$URL)
-      
-      # This requires RCurl
-      # if (url.exists(input$URL) == FALSE || input$URL == "") {
-      #   return(data.frame(x = "Not a valid URL"))
-      # } else {data <- read_csv(input$URL)}
+      #This requires RCurl
+      if(input$URL == "") {
+        return(data.frame(x = "Enter a full HTML address, for example: https://zenodo.org/record/2545922/files/FRET-efficiency_mTq2.csv"))
+      } else if (url.exists(input$URL) == FALSE) {
+         return(data.frame(x = paste("Not a valid URL: ",input$URL)))
+      } else {data <- read_csv(input$URL)}
 
 
       
@@ -475,10 +481,12 @@ observe({
  ######################################################
 ########### GET INPUT VARIABLEs FROM HTML ##############
 
-# Add ?input=3&tidy=TRUE to set input type to paste and tidy format to TRUE:
-#
 
 observe({
+  
+  ############ ?data ################
+  
+  
   query <- parseQueryString(session$clientData$url_search)
   if (!is.null(query[['data']])) {
     presets_data <- query[['data']]
@@ -487,8 +495,17 @@ observe({
     
     updateRadioButtons(session, "data_input", selected = presets_data[1])    
     updateCheckboxInput(session, "tidyInput", value = presets_data[2])
+    
+    #To Implement:
+    #presets_data[3], x_var
+    #presets_data[4], y_var
+    #presets_data[5], h_facet
+    #presets_data[6], v_facet
+    
   }
 
+  ############ ?vis ################
+  
   if (!is.null(query[['vis']])) {
 
   presets_vis <- query[['vis']]
@@ -505,12 +522,13 @@ observe({
 #  updateTabsetPanel(session, "tabs", selected = "Plot")
   }
   
+  ############ ?layout ################
+  
   if (!is.null(query[['layout']])) {
     
     presets_layout <- query[['layout']]
     presets_layout <- unlist(strsplit(presets_layout,";"))
     observe(print((presets_layout)))
-
 
     updateCheckboxInput(session, "rotate_plot", value = presets_layout[1])
     updateCheckboxInput(session, "no_grid", value = (presets_layout[2]))
@@ -522,13 +540,127 @@ observe({
      updateCheckboxInput(session, "color_stats", value = presets_layout[7])
      updateRadioButtons(session, "adjustcolors", selected = presets_layout[8])    
      updateCheckboxInput(session, "add_description", value = presets_layout[9])
-
+     if (length(presets_layout)>10) {
+       updateNumericInput(session, "plot_height", value= presets_layout[10])
+       updateNumericInput(session, "plot_width", value= presets_layout[11])
+     }
+     
+     
     #  updateTabsetPanel(session, "tabs", selected = "Plot")
   }
+
+  ############ ?color ################
   
+  if (!is.null(query[['color']])) {
+    
+    presets_color <- query[['color']]
+    presets_color <- unlist(strsplit(presets_color,";"))
+
+    updateSelectInput(session, "colour_list", selected = presets_color[1])
+    updateTextInput(session, "user_color_list", value= presets_color[2])
+  }
+
+    ############ ?label ################
+
+  if (!is.null(query[['label']])) {
+    
+    presets_label <- query[['label']]
+    presets_label <- unlist(strsplit(presets_label,";"))
+    observe(print((presets_label)))
+    
+    
+    updateCheckboxInput(session, "add_title", value = presets_label[1])
+    updateTextInput(session, "title", value= presets_label[2])
+
+    updateCheckboxInput(session, "label_axes", value = presets_label[3])
+    updateTextInput(session, "lab_x", value= presets_label[4])
+    updateTextInput(session, "lab_y", value= presets_label[5])
+    
+    updateCheckboxInput(session, "adj_fnt_sz", value = presets_label[6])
+    updateNumericInput(session, "fnt_sz_ttl", value= presets_label[7])
+    updateNumericInput(session, "fnt_sz_ax", value= presets_label[8])
+    updateCheckboxInput(session, "add_description", value = presets_label[9])
+    }
   
+  ############ ?url ################
   
+  if (!is.null(query[['url']])) {
+    updateRadioButtons(session, "data_input", selected = 5)  
+    updateTextInput(session, "URL", value= query[['url']])
+    observe(print((query[['url']])))
+    updateTabsetPanel(session, "tabs", selected = "Plot")
+  }
   
+})
+
+  ####################################################################################
+########### Retrieve current settings and generate a URL to clone the settings ##############
+
+output$HTMLpreset <- renderText({
+  url()
+  })
+
+
+url <- reactive({
+
+#  presets_data <- paste("<p>?data=", input$data_input, input$tidyInput, "</p>",  sep="")
+#  observe(print((presets_data)))
+#  preset <- c('</br></br><h4>HTML link: </h4>')
+
+  base_URL <- paste(sep = "", session$clientData$url_protocol, "//",session$clientData$url_hostname, ":",session$clientData$url_port, session$clientData$url_pathname)
+  
+  data <- c(input$data_input, input$tidyInput, input$x_var, input$y_var, input$h_facet, input$v_facet)
+
+  vis <- c(input$jitter_type, input$alphaInput, input$summaryInput, input$add_CI, input$alphaInput_summ, input$ordered)
+  layout <- c(input$rotate_plot, input$no_grid, input$change_scale, input$scale_log_10, input$range, input$color_data, input$color_stats,
+              input$adjustcolors, input$add_description, input$plot_height, input$plot_width)
+
+  #Hide the standard list of colors if it is'nt used
+   if (input$adjustcolors != "5") {
+     color <- c(input$colour_list, "none")
+   } else if (input$adjustcolors == "5") {
+     color <- c(input$colour_list, input$user_color_list)
+   }
+  
+  label <- c(input$add_title, input$title, input$label_axes, input$lab_x, input$lab_y, input$adj_fnt_sz)
+    
+  #replace FALSE by "" and convert to string with ; as seperator
+  data <- sub("FALSE", "", data)
+  data <- paste(data, collapse=";")
+  data <- paste0("data=", data) 
+  
+  vis <- sub("FALSE", "", vis)
+  vis <- paste(vis, collapse=";")
+  vis <- paste0("vis=", vis) 
+  
+  layout <- sub("FALSE", "", layout)
+  layout <- paste(layout, collapse=";")
+  layout <- paste0("layout=", layout) 
+  
+  color <- sub("FALSE", "", color)
+  color <- paste(color, collapse=";")
+  color <- paste0("color=", color) 
+  
+  label <- sub("FALSE", "", label)
+  label <- paste(label, collapse=";")
+  label <- paste0("label=", label) 
+  
+  if (input$data_input == "5") {url <- paste("url=",input$URL,sep="")} else {url <- NULL}
+
+  parameters <- paste(data, vis,layout,color,label,url, sep="&")
+  
+  preset_URL <- paste(base_URL, parameters, sep="?")
+
+ observe(print(parameters))
+ observe(print(preset_URL))  
+ return(preset_URL)
+  })
+
+
+############# Pop-up that displays the URL to 'clone' the current settings ################
+
+observeEvent(input$settings_copy , {
+  showModal(urlModal(url=url(), title = "Use the URL to launch PlotsOfData with the current setting"))
 })
 
 
@@ -550,7 +682,9 @@ observeEvent(input$summaryInput , {
       "You have selected a violinplot as summary, but one of the conditions has less than 10 datapoints - For n<10 the violinplot is not a suitable summary", easyClose=TRUE, footer = modalButton("Click anywhere to dismiss")
     ))
   }
-})
+
+  
+  })
 
 ############# Pop-up appears when the 95%CI is selected when n<10 ###########
 
@@ -566,8 +700,7 @@ observeEvent(input$add_CI , {
   }  
 })
 
-
- ###################################    
+###################################    
 
 ###########################################################  
 ######## Determine and set the order of the Conditions #######  
@@ -575,10 +708,6 @@ df_sorted <- reactive({
   
 #  klaas <- df_upload_tidy()
   klaas <-  df_selected()
-
-   
-
-
 
    if(input$ordered == "median") {
      klaas$Condition <- reorder(klaas$Condition, klaas$Value, median, na.rm = TRUE)
@@ -619,17 +748,12 @@ df_selected <- reactive({
       koos <- df_upload_tidy() %>% filter(!is.na(Value))
     }
   
-  
-  
-
     return(koos)
 })
  ###########################################################  
 
-  
  #############################################################
 #### DISPLAY UPLOADED DATA (exactly as provided) ##################
-
 
 output$data_uploaded <- renderDataTable(
 
@@ -643,7 +767,6 @@ output$data_uploaded <- renderDataTable(
   
   
  #############################################################
-
 
  ##################################################
 #### Caluclate Summary of the DATA for the MEAN ####
@@ -685,8 +808,6 @@ df_summary_median <- reactive({
                             Q1=quantile(Value, probs=0.25),
                             Q3=quantile(Value, probs=0.75))
     
-    
-    
     i=0
     df_new_medians <- data.frame(Condition=levels(factor(kees$Condition)), resampled_median=tapply(kees$Value, kees$Condition, boot_median))
     
@@ -723,13 +844,11 @@ output$downloadPlotPDF <- downloadHandler(
 #    paste("PlotsOfData.pdf")
   },
   content <- function(file) {
-    pdf(file, width = input$myWidth/72, height = input$myHeight/72)
+    pdf(file, width = input$plot_width/72, height = input$plot_height/72)
     ## ---------------
     plot(plotdata())
     ## ---------------
     dev.off()
-    # ggsave(file, width = input$plot_width/72,
-    #        height = input$plot_height/72, dpi="retina")
   },
   contentType = "application/pdf" # MIME type of the image
 )
@@ -745,9 +864,6 @@ output$downloadPlotPNG <- downloadHandler(
     ## ---------------
     dev.off()
     
-    
-    # ggsave(file, width = input$plot_width/72,
-    #        height = input$plot_height/72)
   },
   contentType = "application/png" # MIME type of the image
 )
@@ -931,9 +1047,7 @@ plotdata <- reactive({
       p <-  p + geom_errorbar(data=df_summary_mean(), aes_string(x="Condition", ymin="mean", ymax="mean", colour = kleur_stats), width=width_column, size=2, alpha=input$alphaInput_summ)
     }
     
-    
-    
-    
+
 
 ########### Do some formatting of the lay-out
 
@@ -1027,7 +1141,6 @@ output$downloadData <- downloadHandler(
 
 ###########################################
 
-
  ###########################################################
 #### Combine the statistics in one table and filter ###########
 
@@ -1099,13 +1212,14 @@ output$data_summary <- renderDataTable(
 #  colnames = c(ID = 1),
   selection = 'none',
   extensions = c('Buttons', 'ColReorder'),
-  options = list(dom = 'Bfrtip',
+  options = list(dom = 'Bfrtip', pageLength = 100,
              buttons = c('copy', 'csv','excel', 'pdf'),
     editable=FALSE, colReorder = list(realtime = FALSE), columnDefs = list(list(className = 'dt-center', targets = '_all'))
     ) 
   ) 
 #   %>% formatRound(n, digits=0)
 ) 
+
 
 
 #####################
@@ -1178,13 +1292,6 @@ output$LegendText <- renderText({
   })
 #####################
 #####################
-
-
-
-
-
-
-
 
 
 ###########################################
