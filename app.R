@@ -44,7 +44,6 @@ library(RCurl)
 #Uncomment for sinaplot
 #library(ggforce)
 
-################
 
 #Function that resamples a vector (with replacement) and calculates the median value
 boot_median = function(x) {
@@ -78,8 +77,8 @@ Tol_light <- c('#BBCC33', '#AAAA00', '#77AADD', '#EE8866', '#EEDD88', '#FFAABB',
 df_wide_example <- read.csv("Data_wide_example.csv", na.strings = "")
 df_tidy_example <- read.csv("Data_tidy_example.csv", na.strings = "")
 
- #######################################
-###### Define the User interface #########
+
+###### GENERATE USER INTERFACE #########
 
 ui <- fluidPage(
   
@@ -179,7 +178,7 @@ ui <- fluidPage(
               condition = "input.adj_fnt_sz == true",
               numericInput("fnt_sz_ttl", "Size axis titles:", value = 24),
               numericInput("fnt_sz_ax", "Size axis labels:", value = 18)),
-checkboxInput(inputId = "add_description",
+        checkboxInput(inputId = "add_description",
               label = "Add figure description",
               value = FALSE),
         NULL
@@ -316,6 +315,8 @@ checkboxInput(inputId = "add_description",
                            downloadButton("downloadPlotPNG", "Download png-file"), 
                            actionButton("settings_copy", icon = icon("clone"),
                                         label = "Clone current setting"),
+                           actionButton("legend_copy", icon = icon("clone"),
+                                        label = "Copy Legend"),
                                         
                                         div(`data-spy`="affix", `data-offset-top`="10", plotOutput("coolplot", height="100%"),
                                             htmlOutput("LegendText", width="200px", inline =FALSE),
@@ -332,14 +333,13 @@ checkboxInput(inputId = "add_description",
   )         
 )
 
- #######################################
 
 server <- function(input, output, session) {
 
-  #####################################
+
   ###### DATA INPUT ###################
 
-  df_upload <- reactive({
+df_upload <- reactive({
     
     if (input$data_input == 1) {
       data <- df_wide_example
@@ -365,16 +365,15 @@ server <- function(input, output, session) {
       }
     } else if (input$data_input == 5) {
       
+      #Read data from a URL
       #This requires RCurl
       if(input$URL == "") {
         return(data.frame(x = "Enter a full HTML address, for example: https://zenodo.org/record/2545922/files/FRET-efficiency_mTq2.csv"))
       } else if (url.exists(input$URL) == FALSE) {
          return(data.frame(x = paste("Not a valid URL: ",input$URL)))
       } else {data <- read_csv(input$URL)}
-
-
-      
-      
+    
+      #Read the data from textbox
     } else if (input$data_input == 4) {
       if (input$data_paste == "") {
         data <- data.frame(x = "Copy your data into the textbox,
@@ -397,6 +396,7 @@ server <- function(input, output, session) {
 })
   
   
+##### REMOVE SELECTED COLUMNS #########
 df_filtered <- reactive({     
   
   if (!is.null(input$data_remove)) {
@@ -407,9 +407,7 @@ df_filtered <- reactive({
   
 })
 
- #####################################
-  
- ####################################
+
 ##### CONVERT TO TIDY DATA ##########
   
 #Need to tidy the data?!
@@ -429,11 +427,8 @@ df_upload_tidy <- reactive({
     }
   return(klaas)
 })
- ###################################
 
-
- ####################################
-##### Get the Variables ##############
+##### Get Variables from the input ##############
 
 observe({ 
         var_names  <- names(df_upload())
@@ -465,7 +460,6 @@ observe({
 
     })
 
-
 #observeEvent(input$add_bar, {
 #  showNotification("clicked!", type = "default")
 #},ignoreNULL = F)
@@ -478,9 +472,7 @@ observe({
 #   }
 # })
 
- ######################################################
 ########### GET INPUT VARIABLEs FROM HTML ##############
-
 
 observe({
   
@@ -593,19 +585,16 @@ observe({
   
 })
 
-  ####################################################################################
-########### Retrieve current settings and generate a URL to clone the settings ##############
+
+########### RENDER URL ##############
 
 output$HTMLpreset <- renderText({
   url()
   })
 
+######### GENERATE URL with the settings #########
 
 url <- reactive({
-
-#  presets_data <- paste("<p>?data=", input$data_input, input$tidyInput, "</p>",  sep="")
-#  observe(print((presets_data)))
-#  preset <- c('</br></br><h4>HTML link: </h4>')
 
   base_URL <- paste(sep = "", session$clientData$url_protocol, "//",session$clientData$url_hostname, ":",session$clientData$url_port, session$clientData$url_pathname)
   
@@ -663,7 +652,9 @@ observeEvent(input$settings_copy , {
   showModal(urlModal(url=url(), title = "Use the URL to launch PlotsOfData with the current setting"))
 })
 
-
+observeEvent(input$legend_copy , {
+  showModal(urlModal(url=Fig_legend(), title = "Legend text"))
+})
 
 
 ############# Pop-up appears when a boxplot or violinplot is selected when n<10 ###########
@@ -682,8 +673,6 @@ observeEvent(input$summaryInput , {
       "You have selected a violinplot as summary, but one of the conditions has less than 10 datapoints - For n<10 the violinplot is not a suitable summary", easyClose=TRUE, footer = modalButton("Click anywhere to dismiss")
     ))
   }
-
-  
   })
 
 ############# Pop-up appears when the 95%CI is selected when n<10 ###########
@@ -700,10 +689,10 @@ observeEvent(input$add_CI , {
   }  
 })
 
-###################################    
 
-###########################################################  
-######## Determine and set the order of the Conditions #######  
+
+######## ORDER the Conditions ####### 
+
 df_sorted <- reactive({
   
 #  klaas <- df_upload_tidy()
@@ -719,18 +708,10 @@ df_sorted <- reactive({
      klaas$Condition <- factor(klaas$Condition, levels=unique(sort(klaas$Condition)))
    }  
   
-
-  # klaas <- klaas %>% group_by(Condition) %>% summarise(n = n()) %>% mutate(label = paste0(Condition,'\nn = ',n))
-  # klaas$label <- factor(klaas$label)
-
     return(klaas)
   
 })
 
-########################################################### 
-
-
- ###########################################################  
 ######## Extract the data for display & summary stats #######  
 
 df_selected <- reactive({
@@ -738,11 +719,8 @@ df_selected <- reactive({
     df_temp <- df_upload_tidy() 
     x_choice <- input$x_var
     y_choice <- input$y_var
- #   kleur_choice <- input$colour_list
-    
 
     koos <- df_temp %>% select(Condition = !!x_choice , Value = !!y_choice) %>% filter(!is.na(Value))
-#    koos$Kleur <- as.factor(koos$Kleur)
 
     } else if (input$tidyInput == FALSE ) {
       koos <- df_upload_tidy() %>% filter(!is.na(Value))
@@ -750,9 +728,8 @@ df_selected <- reactive({
   
     return(koos)
 })
- ###########################################################  
 
- #############################################################
+
 #### DISPLAY UPLOADED DATA (exactly as provided) ##################
 
 output$data_uploaded <- renderDataTable(
@@ -765,11 +742,7 @@ output$data_uploaded <- renderDataTable(
   editable = FALSE,selection = 'none'
 )
   
-  
- #############################################################
-
- ##################################################
-#### Caluclate Summary of the DATA for the MEAN ####
+########### Caluclate stats for the MEAN ############
 
 df_summary_mean <- reactive({
   koos <- df_selected()
@@ -780,18 +753,13 @@ df_summary_mean <- reactive({
             mean = mean(Value, na.rm = TRUE),
 #            median = median(Value, na.rm = TRUE),
             sd = sd(Value, na.rm = TRUE)) %>%
-  mutate(sem = sd / sqrt(n - 1),
-         mean_CI_lo = mean + qt((1-Confidence_level)/2, n - 1) * sem,
-         mean_CI_hi = mean - qt((1-Confidence_level)/2, n - 1) * sem)
-  
-#  observe({ print(koos) })
-  
+      mutate(sem = sd / sqrt(n - 1),
+             mean_CI_lo = mean + qt((1-Confidence_level)/2, n - 1) * sem,
+             mean_CI_hi = mean - qt((1-Confidence_level)/2, n - 1) * sem)
+
   })
 
- #################################################
-
- ####################################################
-#### Caluclate Summary of the DATA for the Median ####
+############ Caluclate stats for the MEDIAN ##########
 
 df_summary_median <- reactive({
     
@@ -828,10 +796,8 @@ df_summary_median <- reactive({
 
     return(df_booted)
   })
- ###################################################
-  
 
- ###########################################
+
 ######### DEFINE DOWNLOAD BUTTONS ###########
 
 ##### Set width and height of the plot area
@@ -841,13 +807,10 @@ height <- reactive ({ input$plot_height })
 output$downloadPlotPDF <- downloadHandler(
   filename <- function() {
     paste("PlotsOfData_", Sys.time(), ".pdf", sep = "")
-#    paste("PlotsOfData.pdf")
   },
   content <- function(file) {
     pdf(file, width = input$plot_width/72, height = input$plot_height/72)
-    ## ---------------
     plot(plotdata())
-    ## ---------------
     dev.off()
   },
   contentType = "application/pdf" # MIME type of the image
@@ -859,21 +822,16 @@ output$downloadPlotPNG <- downloadHandler(
   },
   content <- function(file) {
     png(file, width = input$plot_width*4, height = input$plot_height*4, res=300)
-    ## ---------------
     plot(plotdata())
-    ## ---------------
     dev.off()
-    
   },
   contentType = "application/png" # MIME type of the image
 )
 
- ###########################################
 
 
- ###########################################
 ######## PREPARE PLOT FOR DISPLAY ##########
- ###########################################
+
 
 plotdata <- reactive({
 
@@ -906,7 +864,7 @@ plotdata <- reactive({
     newColors <- gsub("\\s","", strsplit(input$user_color_list,",")[[1]])
   }
 
-########## Set default to Plotting "Condition" and "Value"
+    ### Set default to Plotting "Condition" and "Value"
     if (input$x_var == "none") {
       x_choice <- "Condition"
     } else if (input$x_var != "none") {
@@ -919,11 +877,10 @@ plotdata <- reactive({
       y_choice <- as.character(input$y_var)
     }
 
-  ########## Define if color is used for the data
-  #    observe({ print(class(input$colour_list)) })
+  # Define if color is used for the data
+  # observe({ print(class(input$colour_list)) })
   if (input$color_data == FALSE) {
     kleur <- NULL
-    #    observe({ print("Kleur <- NULL") })
   } else if (input$color_data == TRUE) {
         kleur <- as.character(input$colour_list)
   }
@@ -962,7 +919,7 @@ plotdata <- reactive({
   }  
     
   
-  ########## Define minimal n - only plot box/violinplots for min_n>9
+    # Define minimal n - only plot box/violinplots for min_n>9
     df_temp <- df_summary_mean()
     min_n <- min(df_temp$n)
     
@@ -970,7 +927,7 @@ plotdata <- reactive({
     if (input$jitter_type == "none") {width_column <- width_column/2}
 #    if (input$jitter_type == "stripes" && min_n <10) {width_column <- width_column/2}
 
- ###############################################
+
 ############## GENERATE PLOT LAYERS #############
 
     
@@ -1028,7 +985,6 @@ plotdata <- reactive({
               geom_linerange(data=df_summary_median(), aes_string(x="Condition", ymin = "median_CI_lo", ymax = "median_CI_hi", colour=kleur_stats), size =3,alpha=input$alphaInput_summ)
     }
 
-#    else if (input$summaryInput == "median"  && input$add_CI == FALSE || min_n<10) {
     else if (input$summaryInput == "median"  && min_n<10) {
       p <-  p + geom_errorbar(data=df_summary_median(), aes_string(x="Condition", ymin="median", ymax="median", colour = kleur_stats), width=width_column, size=1, alpha=input$alphaInput_summ)
 
@@ -1036,7 +992,6 @@ plotdata <- reactive({
       p <- p + geom_linerange(data=df_summary_mean(), aes_string(x="Condition", ymin = "mean_CI_lo", ymax = "mean_CI_hi", colour=kleur_stats), size =3,alpha=input$alphaInput_summ)+
         geom_point(data=df_summary_mean(), aes_string(x="Condition", y = "mean", colour=kleur_stats), shape = 21,fill=NA,size = 8,alpha=input$alphaInput_summ)
 
-#    } else if (input$summaryInput == "mean"  && (input$add_CI == FALSE || min_n<10)) {
     } else if (input$summaryInput == "mean"  && min_n<10) {
       p <- p + geom_errorbar(data=df_summary_mean(), aes_string(x="Condition", ymin="mean", ymax="mean", colour=kleur_stats), width=width_column, size=1, alpha=input$alphaInput_summ)
     }  
@@ -1049,7 +1004,7 @@ plotdata <- reactive({
     
 
 
-########### Do some formatting of the lay-out
+########### Do some formatting of the lay-out ###########
 
      p <- p+ theme_light(base_size = 16)
     
@@ -1116,17 +1071,14 @@ plotdata <- reactive({
   }) #close plotdata
 
 
-
- ########################################
-##### Make actual plot ############
+##### Render the plot ############
 
 output$coolplot <- renderPlot(width = width, height = height, {
   plot(plotdata())
 }
 )
-##########################################
 
-###########################################
+
 #### Export the data in tidy format ###########
 
 output$downloadData <- downloadHandler(
@@ -1139,9 +1091,6 @@ output$downloadData <- downloadHandler(
 )
 
 
-###########################################
-
- ###########################################################
 #### Combine the statistics in one table and filter ###########
 
 df_filtered_stats <- reactive({
@@ -1169,9 +1118,8 @@ df_filtered_stats <- reactive({
   } else if (is.null(input$stats_select)) {
     df <- klaas %>% select("Condition", "n")}
 })
- ###########################################
 
- ###########################################################
+
 #### A predined selection of stats for the table  ###########
 
 observeEvent(input$summaryInput, {
@@ -1199,12 +1147,7 @@ observeEvent(input$deselect_all1, {
 })
 
 
- ###########################################
-
-
-###########################################
 #### Render the data summary as a table ###########
-  
 
 output$data_summary <- renderDataTable(
  datatable(
@@ -1221,13 +1164,10 @@ output$data_summary <- renderDataTable(
 ) 
 
 
-
-#####################
-#####################
-# *** Print figure legend ***
-output$LegendText <- renderText({
+###### Figure legend #########
+Fig_legend <- renderText({
   
-  if (input$add_description == FALSE) {return(NULL)}
+
   
   if (input$rotate_plot == FALSE) {
     x <- "horizontal"
@@ -1265,9 +1205,11 @@ output$LegendText <- renderText({
   
   #The width of the legend (style as a paragraph between <p></p>) is adjusted to the width of the plot
   
-  Legend<-append(Legend, paste('<p style="width:',input$plot_width,'px;padding: 0px 15px 0px 40px">Graph that shows the data', sep=""))
+  Legend<-append(Legend, paste('<p style="width:',input$plot_width,'px;padding: 0px 15px 0px 40px">', sep=""))
 
-  Legend<-append(Legend, paste("as ", jitter," (visibility: ", input$alphaInput, "). ", sep=""))
+  Legend <- NULL
+  
+  Legend<-append(Legend, paste("Graph that shows the data as ", jitter," (visibility: ", input$alphaInput, "). ", sep=""))
   
   #Concatenate the condition with n
   koos <- df_summary_mean() %>% unite(label_n, c(Condition, n), sep="=", remove = FALSE)
@@ -1284,17 +1226,30 @@ output$LegendText <- renderText({
   
   if (input$scale_log_10) {Legend<-append(Legend, "The values are plotted on a log10 scale. ")		}
   
-  Legend <- append(Legend, paste("</p>")) 
-
   return(Legend)
   
+  })
+
+######## Figure Legend in HTML format #############
+
+output$LegendText <- renderText({
+  
+  if (input$add_description == FALSE) {return(NULL)}
+
+  HTML_Legend <- c('</br></br><h4>Figure description</h4>')
+  
+  #The width of the legend (style as a paragraph between <p></p>) is adjusted to the width of the plot
+  
+  HTML_Legend <-append(HTML_Legend, paste('<p style="width:',input$plot_width,'px;padding: 0px 15px 0px 40px">', sep=""))
+  
+  HTML_Legend <- append(HTML_Legend, Fig_legend())
+  
+  HTML_Legend <- append(HTML_Legend, paste("</p>"))
 
   })
-#####################
-#####################
 
 
-###########################################
+######## The End; close server ########################
 
 } #close "server"
 
