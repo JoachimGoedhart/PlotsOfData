@@ -1,4 +1,4 @@
-##############################################################################
+# ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # PlotsOfData: Shiny app for plotting and comparing the data
 # Created by Joachim Goedhart (@joachimgoedhart), first version 2018
 # Takes non-tidy, spreadsheet type data as input or tidy format
@@ -12,7 +12,7 @@
 # Colors can be added to the data and/or the stats
 # Several colorblind safe palettes are available
 # Ordering of the categorial data is 'as is, based on median or alphabetical
-##############################################################################
+# ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # Copyright (C) 2018  Joachim Goedhart
 # electronic mail address: j #dot# goedhart #at# uva #dot# nl
 # 
@@ -28,7 +28,7 @@
 # 
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-##############################################################################
+# ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 library(shiny)
 library(ggplot2)
@@ -43,7 +43,6 @@ library(RCurl)
 
 #Uncomment for sinaplot
 #library(ggforce)
-
 
 #Function that resamples a vector (with replacement) and calculates the median value
 boot_median = function(x) {
@@ -77,8 +76,7 @@ Tol_light <- c('#BBCC33', '#AAAA00', '#77AADD', '#EE8866', '#EEDD88', '#FFAABB',
 df_wide_example <- read.csv("Data_wide_example.csv", na.strings = "")
 df_tidy_example <- read.csv("Data_tidy_example.csv", na.strings = "")
 
-
-###### GENERATE USER INTERFACE #########
+###### UI: User interface #########
 
 ui <- fluidPage(
   
@@ -92,8 +90,6 @@ ui <- fluidPage(
                                                                   "Random" = "random", 
                                                                   "None; stripes" = "stripes",
                                                                   "None (for small n)" = "none"), selected = "quasirandom"),
-        
-        
         
         sliderInput("alphaInput", "Visibility of the data", 0, 1, 0.3),
 
@@ -327,15 +323,13 @@ ui <- fluidPage(
                            ),
                   tabPanel("About", includeHTML("about.html")
                            )
-                
-      )
+        )
     )
   )         
 )
 
 
 server <- function(input, output, session) {
-
 
   ###### DATA INPUT ###################
 
@@ -407,7 +401,6 @@ df_filtered <- reactive({
   
 })
 
-
 ##### CONVERT TO TIDY DATA ##########
   
 #Need to tidy the data?!
@@ -421,8 +414,6 @@ df_upload_tidy <- reactive({
       klaas <- df_filtered() %>% gather(Condition, Value)
     }
     else if(input$tidyInput == TRUE ) {
-      #Convert the integers to factors, to enable adding discrete colors
-      #klaas <- df_upload() %>% mutate_if(is.integer, factor)
       klaas <- df_upload()
     }
   return(klaas)
@@ -478,7 +469,6 @@ observe({
   
   ############ ?data ################
   
-  
   query <- parseQueryString(session$clientData$url_search)
   if (!is.null(query[['data']])) {
     presets_data <- query[['data']]
@@ -493,8 +483,7 @@ observe({
     #presets_data[4], y_var
     #presets_data[5], h_facet
     #presets_data[6], v_facet
-    
-  }
+    }
 
   ############ ?vis ################
   
@@ -536,8 +525,6 @@ observe({
        updateNumericInput(session, "plot_height", value= presets_layout[10])
        updateNumericInput(session, "plot_width", value= presets_layout[11])
      }
-     
-     
     #  updateTabsetPanel(session, "tabs", selected = "Plot")
   }
 
@@ -582,9 +569,7 @@ observe({
     observe(print((query[['url']])))
     updateTabsetPanel(session, "tabs", selected = "Plot")
   }
-  
 })
-
 
 ########### RENDER URL ##############
 
@@ -611,8 +596,8 @@ url <- reactive({
      color <- c(input$colour_list, input$user_color_list)
    }
   
-  label <- c(input$add_title, input$title, input$label_axes, input$lab_x, input$lab_y, input$adj_fnt_sz)
-    
+  label <- c(input$add_title, input$title, input$label_axes, input$lab_x, input$lab_y, input$adj_fnt_sz, input$fnt_sz_ttl, input$fnt_sz_ax, input$add_description)
+
   #replace FALSE by "" and convert to string with ; as seperator
   data <- sub("FALSE", "", data)
   data <- paste(data, collapse=";")
@@ -644,7 +629,6 @@ url <- reactive({
  observe(print(preset_URL))  
  return(preset_URL)
   })
-
 
 ############# Pop-up that displays the URL to 'clone' the current settings ################
 
@@ -689,13 +673,10 @@ observeEvent(input$add_CI , {
   }  
 })
 
-
-
 ######## ORDER the Conditions ####### 
 
 df_sorted <- reactive({
   
-#  klaas <- df_upload_tidy()
   klaas <-  df_selected()
 
    if(input$ordered == "median") {
@@ -730,7 +711,7 @@ df_selected <- reactive({
 })
 
 
-#### DISPLAY UPLOADED DATA (exactly as provided) ##################
+#### DISPLAY UPLOADED DATA (as provided) ##################
 
 output$data_uploaded <- renderDataTable(
 
