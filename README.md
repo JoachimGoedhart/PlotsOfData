@@ -5,7 +5,7 @@ A Shiny App for comparison of samples
 
 ### About PlotsOfData
 
-PlotsOfData visualizes data and statistics to enable the comparison of (experimental) conditions. The philosophy of the approach is that plotting the raw data (instead of a summary) improves transparency and interpretation (see also [this blog](http://thenode.biologists.com/leaving-bar-five-steps/)). To further facilitate the comparison, summary statistics (mean, median, boxplot) and inferential statistics (confidence intervals) can be added. The user has full control over the visibility of the raw data and statistics by adjustment of the transparency (alpha).
+PlotsOfData visualizes data and statistics to enable the comparison of (experimental) conditions. The philosophy of the approach is that plotting the raw data (instead of a summary) improves transparency and interpretation (see also [this blog](http://thenode.biologists.com/leaving-bar-five-steps/)). To further facilitate the comparison, summary statistics (mean, median, boxplot) and inferential statistics (confidence intervals) can be added. The user has full control over the visibility of the raw data and statistics by adjustment of the transparency (alpha). Details are described in a [publication](https://doi.org/10.1371/journal.pbio.3000202)
 
 Bootstrapping is used to calculate the (asymmetric) 95% CI of medians. More information in [this blog](http://thenode.biologists.com/a-better-bar/education/)
 
