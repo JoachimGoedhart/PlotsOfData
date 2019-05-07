@@ -73,8 +73,12 @@ Tol_light <- c('#BBCC33', '#AAAA00', '#77AADD', '#EE8866', '#EEDD88', '#FFAABB',
 
 
 #Read a text file (comma separated values)
+
 df_wide_example <- read.csv("Data_wide_example.csv", na.strings = "")
 df_tidy_example <- read.csv("Data_tidy_example.csv", na.strings = "")
+
+#df_wide_example <- data.frame(X=c(1,2,3),Y=c(3,4,5),Z=c(2,5,6))
+#df_tidy_example <- data.frame(X=c(1,2,3),Y=c(3,4,5),Z=c(2,5,6))
 
 ###### UI: User interface #########
 
@@ -884,9 +888,8 @@ plotdata <- reactive({
         if(length(newColors) < max_colors) {
           newColors<-rep(newColors,times=(round(max_colors/length(newColors)))+1)
         }
-    
-    
     }
+    
   ########## Define if/how color is used for the stats ############
   #    observe({ print(class(input$colour_list)) })
   if (input$color_stats == FALSE) {
@@ -1168,13 +1171,13 @@ Fig_legend <- renderText({
   
   if (input$summaryInput == "median" && input$add_CI == FALSE)  { stats <- paste(x," line indicating the median ")}
   else if (input$summaryInput == "mean" && input$add_CI == FALSE) {stats <- paste(x," line indicating the mean ")}
-  else if (input$summaryInput == "box" && input$add_CI == FALSE && min_n>9) {stats <- paste("a boxplot, with the box indicating the IQR and ", x," line indicating the median ")}
+  else if (input$summaryInput == "box" && input$add_CI == FALSE && min_n>9) {stats <- paste("a boxplot, with the box indicating the IQR, the whiskers showing the range of values that are within 1.5*IQR and a ", x," line indicating the median ")}
   else if (input$summaryInput == "violin" && min_n>9) {stats <- paste("a violinplot reflecting the data distribution and a ", x," line indicating the median ")}  
   
   
   else if (input$summaryInput == "median" && input$add_CI == TRUE)  { stats <- c("an open circle indicating the median ")}
   else if (input$summaryInput == "mean" && input$add_CI == TRUE) {stats <- c("an open circle indicating the mean ")}
-  else if (input$summaryInput == "box" && input$add_CI == TRUE) {stats <- paste("a boxplot, with the box indicating the IQR and ", x," line indicating the median ")}
+  else if (input$summaryInput == "box" && input$add_CI == TRUE) {stats <- paste("a boxplot, with the box indicating the IQR, the whiskers showing the range of values that are within 1.5*IQR and a ", x," line indicating the median ")}
 
   if (input$add_CI == TRUE && min_n>9 && input$summaryInput != "box" && input$summaryInput != "mean") {stat_inf <- paste(" A ", y," bar indicates for each median the 95% confidence interval determined by bootstrapping. ")}
   else if (input$add_CI == TRUE && min_n>9 && input$summaryInput == "box") {stat_inf <- c("The notches represent for each median the 95% confidence interval (approximated by 1.58*IQR/sqrt(n)). ")}
@@ -1229,6 +1232,9 @@ output$LegendText <- renderText({
 
   })
 
+
+    # End R-session when browser closed
+    session$onSessionEnded(stopApp)
 
 ######## The End; close server ########################
 
