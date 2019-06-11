@@ -477,8 +477,8 @@ observe({
   if (!is.null(query[['data']])) {
     presets_data <- query[['data']]
     presets_data <- unlist(strsplit(presets_data,";"))
-    observe(print((presets_data)))
-    
+    observe(print((presets_data[1])))
+#    observe(print(("hello")))    
     updateRadioButtons(session, "data_input", selected = presets_data[1])    
     updateCheckboxInput(session, "tidyInput", value = presets_data[2])
     
@@ -1172,7 +1172,7 @@ Fig_legend <- renderText({
   if (input$summaryInput == "median" && input$add_CI == FALSE)  { stats <- paste(x," line indicating the median ")}
   else if (input$summaryInput == "mean" && input$add_CI == FALSE) {stats <- paste(x," line indicating the mean ")}
   else if (input$summaryInput == "box" && input$add_CI == FALSE && min_n>9) {stats <- paste("a boxplot, with the box indicating the IQR, the whiskers showing the range of values that are within 1.5*IQR and a ", x," line indicating the median ")}
-  else if (input$summaryInput == "violin" && min_n>9) {stats <- paste("a violinplot reflecting the data distribution and a ", x," line indicating the median ")}  
+  else if (input$summaryInput == "violin" && min_n>9) {stats <- paste("a violinplot reflecting the data distribution and a ", x," line indicating the 0.5 quantile of the density estimate ")}  
   
   
   else if (input$summaryInput == "median" && input$add_CI == TRUE)  { stats <- c("an open circle indicating the median ")}
