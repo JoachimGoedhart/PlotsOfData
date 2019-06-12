@@ -937,11 +937,9 @@ plotdata <- reactive({
       p <- p + geom_boxplot(data=df_upload_tidy(), aes_string(x=x_choice, y=y_choice, fill=kleur_stats), notch = input$add_CI, outlier.color=NA, width=width_column, size=0.5, alpha=input$alphaInput_summ)
   
     } else if (input$summaryInput == "violin" && min_n>9) {
-      p <- p + geom_violin(data=df_upload_tidy(), aes_string(x=x_choice, y=y_choice, fill=kleur_stats),scale = "width", draw_quantiles = c(0.5), width=width_column, size=0.5, alpha=input$alphaInput_summ) 
-      if (input$add_CI == TRUE) {
-        p <- p + geom_linerange(data=df_summary_median(), aes_string(x="Condition", ymin = "median_CI_lo", ymax = "median_CI_hi"), colour="black", size =3,alpha=input$alphaInput_summ)
-       
-      }
+      p <- p + geom_violin(data=df_upload_tidy(), aes_string(x=x_choice, y=y_choice, fill=kleur_stats),scale = "width", 
+ #                          draw_quantiles = c(0.5),
+                           width=width_column, size=0.5, alpha=input$alphaInput_summ) 
     }
 
    #### plot individual measurements (middle layer) ####
@@ -984,6 +982,14 @@ plotdata <- reactive({
     }
     else if (input$summaryInput == "mean"  && min_n>9 && input$add_CI == FALSE) {
       p <-  p + geom_errorbar(data=df_summary_mean(), aes_string(x="Condition", ymin="mean", ymax="mean", colour = kleur_stats), width=width_column, size=2, alpha=input$alphaInput_summ)
+    }
+    else if (input$summaryInput == "violin"  && min_n>9) {
+      p <-  p + geom_point(data=df_summary_median(), aes_string(x="Condition", y = "median"), colour="black", shape = 21,fill=NA,size = 8,alpha=input$alphaInput_summ)
+      if (input$add_CI == TRUE) {
+        p <- p + geom_linerange(data=df_summary_median(), aes_string(x="Condition", ymin = "median_CI_lo", ymax = "median_CI_hi"), colour="black", size =3,alpha=input$alphaInput_summ)
+        
+      }
+      
     }
     
 
