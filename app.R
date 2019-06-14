@@ -80,6 +80,10 @@ df_tidy_example <- read.csv("Data_tidy_example.csv", na.strings = "")
 #df_wide_example <- data.frame(X=c(1,2,3),Y=c(3,4,5),Z=c(2,5,6))
 #df_tidy_example <- data.frame(X=c(1,2,3),Y=c(3,4,5),Z=c(2,5,6))
 
+# Create a reactive object here that we can share between all the sessions.
+vals <- reactiveValues(count=0)
+
+
 ###### UI: User interface #########
 
 ui <- fluidPage(
@@ -289,7 +293,11 @@ ui <- fluidPage(
       
       conditionalPanel(
         condition = "input.tabs=='About'",
-        h4("About")    
+        
+        #Session counter: https://gist.github.com/trestletech/9926129
+        h4("About"),  "There are currently", 
+        verbatimTextOutput("count"),
+        "session(s) connected to this app."    
       ),
 
       conditionalPanel(
@@ -335,6 +343,8 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
 
+  
+  isolate(vals$count <- vals$count + 1)
   ###### DATA INPUT ###################
 
 df_upload <- reactive({
@@ -1178,7 +1188,7 @@ Fig_legend <- renderText({
   if (input$summaryInput == "median" && input$add_CI == FALSE)  { stats <- paste(x," line indicating the median ")}
   else if (input$summaryInput == "mean" && input$add_CI == FALSE) {stats <- paste(x," line indicating the mean ")}
   else if (input$summaryInput == "box" && input$add_CI == FALSE && min_n>9) {stats <- paste("a boxplot, with the box indicating the IQR, the whiskers showing the range of values that are within 1.5*IQR and a ", x," line indicating the median ")}
-  else if (input$summaryInput == "violin" && min_n>9) {stats <- paste("a violinplot reflecting the data distribution and a ", x," line indicating the 0.5 quantile of the density estimate ")}  
+  else if (input$summaryInput == "violin" && min_n>9) {stats <- paste("a violinplot reflecting the data distribution and an open circle indicating the median of the data ")}  
   
   
   else if (input$summaryInput == "median" && input$add_CI == TRUE)  { stats <- c("an open circle indicating the median ")}
@@ -1238,9 +1248,24 @@ output$LegendText <- renderText({
 
   })
 
+      ########### Update count #########
+      # Reactively update the client.
+      output$count <- renderText({
+        vals$count
+      })
+
 
     # End R-session when browser closed
     session$onSessionEnded(stopApp)
+    
+    # When a session ends, decrement the counter.
+    session$onSessionEnded(function(){
+      # We use isolate() here for the same reasons as above.
+      isolate(vals$count <- vals$count - 1)
+    })
+    
+
+    
 
 ######## The End; close server ########################
 
