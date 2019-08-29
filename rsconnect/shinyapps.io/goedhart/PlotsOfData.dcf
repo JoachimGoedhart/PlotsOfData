@@ -5,9 +5,9 @@ account: goedhart
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 458873
-bundleId: 2149193
+bundleId: 2367635
 url: https://goedhart.shinyapps.io/PlotsOfData/
-when: 1560366550.19586
+when: 1567084639.18693
 asMultiple: FALSE
 asStatic: FALSE
 ignoredFiles: .Rapp.history|ComparisonPlot_example1.png|runtime.txt|www/.DS_Store

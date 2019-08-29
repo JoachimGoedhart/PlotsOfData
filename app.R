@@ -62,14 +62,17 @@ lower_percentile=(1-Confidence_level)/2
 upper_percentile=1-((1-Confidence_level)/2)
 
 
-#Several qualitative color palettes that are colorblind friendly
-#From Paul Tol: https://personal.sron.nl/~pault/
 #Code to generate vectors in R to use these palettes
 
-#Red, Green, Blue, yellow, cyan, purple, grey
+#From Paul Tol: https://personal.sron.nl/~pault/
 Tol_bright <- c('#EE6677', '#228833', '#4477AA', '#CCBB44', '#66CCEE', '#AA3377', '#BBBBBB')
-Tol_muted <- c('#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77', '#CC6677', '#882255', '#AA4499', '#332288', '#DDDDDD')
+
+Tol_muted <- c('#88CCEE', '#44AA99', '#117733', '#332288', '#DDCC77', '#999933','#CC6677', '#882255', '#AA4499', '#DDDDDD')
+
 Tol_light <- c('#BBCC33', '#AAAA00', '#77AADD', '#EE8866', '#EEDD88', '#FFAABB', '#99DDFF', '#44BB99', '#DDDDDD')
+
+#From Color Universal Design (CUD): https://jfly.uni-koeln.de/color/
+Okabe_Ito <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#000000")
 
 
 #Read a text file (comma separated values)
@@ -103,12 +106,15 @@ ui <- fluidPage(
 
         radioButtons("summaryInput", "Statistics", choices = list("Median" = "median", "Mean" = "mean", "Boxplot (minimum n=10)" = "box", "Violin Plot (minimum n=10)" = "violin"), selected = "median"),
         checkboxInput(inputId = "add_CI", label = HTML("Add 95% CI <br/> (minimum n=10)"), value = FALSE),
+        conditionalPanel(
+          condition = "input.add_CI == true && input.summaryInput !='box'",
+          checkboxInput(inputId = "ugly_errors", label = "Classic error bars", value = FALSE)),
+  
+        #Uncomment for grey box that indicates range
+        conditionalPanel(
+              condition = "input.summaryInput == 'median' || input.summaryInput == 'mean'",
 
-#Uncomment for grey box that indicates range
-        # conditionalPanel(
-        #       condition = "input.summaryInput == 'median' || input.summaryInput == 'mean'",
-        # 
-        #         checkboxInput(inputId = "add_bar", label = HTML("Add a bar as visual aid"), value = FALSE)),
+        checkboxInput(inputId = "add_bar", label = HTML("Add a box that shows the range"), value = FALSE)),
 
         sliderInput("alphaInput_summ", "Visibility of the statistics", 0, 1, 1),
 
@@ -145,9 +151,18 @@ ui <- fluidPage(
             ########## Choose color from list
             selectInput("colour_list", "Colour:", choices = ""),
 
-          radioButtons("adjustcolors", "Color palette:", choices = list("Standard" = 1,"Colorblind safe (bright)" = 2,"Colorblind safe (muted)" = 3,"Colorblind safe (light)" = 4, "User defined"=5) , selected =  1),
+          radioButtons("adjustcolors", "Color palette:", choices = 
+            list(
+              "Standard" = 1,
+              "Okabe&Ito; CUD" = 6,
+              "Tol; bright" = 2,
+              "Tol; muted" = 3,
+              "Tol; light" = 4,
+              "User defined"=5),
+            selected =  1),
+      
               conditionalPanel(condition = "input.adjustcolors == 5",
-                 textInput("user_color_list", "Names or hexadecimal codes (applied to conditions in alphabetical order):", value = "turquoise2,#FF2222,lawngreen"), 
+                 textInput("user_color_list", "Names or hexadecimal codes separated by a comma (applied to conditions in alphabetical order):", value = "turquoise2,#FF2222,lawngreen"), 
                  
                  h5("",
                     a("Click here for more info on color names",
@@ -465,17 +480,20 @@ observe({
 
     })
 
-#observeEvent(input$add_bar, {
-#  showNotification("clicked!", type = "default")
-#},ignoreNULL = F)
+# observeEvent(input$add_bar, {
+#   showNotification("clicked!", type = "default")
+# },ignoreNULL = F)
 
 ###### When a bar is added, make sure that the data is still visible
-# observeEvent(input$add_bar, {
-#   if (input$add_bar==TRUE)  {
-#     updateSliderInput(session, "alphaInput", min=0.2, max=1)
-# 
-#   }
-# })
+observeEvent(input$add_bar, {
+  if (input$add_bar==TRUE)  {
+    updateSliderInput(session, "alphaInput", min=0.2, max=1)
+
+  } else if (input$add_bar==FALSE)  {
+    updateSliderInput(session, "alphaInput", min=0, max=1)
+    
+  }
+})
 
 ########### GET INPUT VARIABLEs FROM HTML ##############
 
@@ -847,17 +865,19 @@ plotdata <- reactive({
   
   ########## Define alternative color palettes ##########
   
-  newColors <- NULL
-  
-  if (input$adjustcolors == 2) {
-    newColors <- Tol_bright
-  } else if (input$adjustcolors == 3) {
-    newColors <- Tol_muted
-  } else if (input$adjustcolors == 4) {
-    newColors <- Tol_light
-  } else if (input$adjustcolors == 5) {
-    newColors <- gsub("\\s","", strsplit(input$user_color_list,",")[[1]])
-  }
+    newColors <- NULL
+    
+    if (input$adjustcolors == 2) {
+      newColors <- Tol_bright
+    } else if (input$adjustcolors == 3) {
+      newColors <- Tol_muted
+    } else if (input$adjustcolors == 4) {
+      newColors <- Tol_light
+    } else if (input$adjustcolors == 6) {
+      newColors <- Okabe_Ito
+    } else if (input$adjustcolors == 5) {
+      newColors <- gsub("\\s","", strsplit(input$user_color_list,",")[[1]])
+    }
 
     ### Set default to Plotting "Condition" and "Value"
     if (input$x_var == "none") {
@@ -932,14 +952,13 @@ plotdata <- reactive({
     
     
   ##### Add bar/box as visual aid ######  
-    # if (input$add_bar == TRUE && input$summaryInput == "median") {
-    #   p <- p + stat_summary(data=df_selected(), aes_string(x="Condition", y=y_choice), fun.y = median, fun.ymin = min, fun.ymax = max, geom = "crossbar", width=width_column, color = NA,fill="grey", alpha=input$alphaInput_summ/4)
-    # }
-    # 
-    # if (input$add_bar == TRUE && input$summaryInput == "mean") {
-    #   observe({ print(("Hello")) }) 
-    #   p <- p + stat_summary(data=df_selected(), aes_string(x="Condition", y=y_choice), fun.y = mean, fun.ymin = min, fun.ymax = max, geom = "crossbar", width=width_column, color = NA,fill="grey", alpha=input$alphaInput_summ/4)
-    # }
+    if (input$add_bar == TRUE && input$summaryInput == "median") {
+      p <- p + stat_summary(data=df_selected(), aes_string(x="Condition", y=y_choice), fun.y = median, fun.ymin = min, fun.ymax = max, geom = "crossbar", width=width_column, color = NA,fill="grey", alpha=input$alphaInput_summ/2)
+    }
+
+    if (input$add_bar == TRUE && input$summaryInput == "mean") {
+      p <- p + stat_summary(data=df_selected(), aes_string(x="Condition", y=y_choice), fun.y = mean, fun.ymin = min, fun.ymax = max, geom = "crossbar", width=width_column, color = NA,fill="grey", alpha=input$alphaInput_summ/2)
+    }
     
     
   ##### plot selected data summary (bottom layer) ####
@@ -973,16 +992,30 @@ plotdata <- reactive({
     
   ##### plot selected data summary (top layer) ####
     if (input$summaryInput == "median"  && input$add_CI == TRUE && min_n>9) {
-    p <-  p + geom_point(data=df_summary_median(), aes_string(x="Condition", y = "median", colour=kleur_stats), shape = 21,fill=NA,size = 8,alpha=input$alphaInput_summ)+
-              geom_linerange(data=df_summary_median(), aes_string(x="Condition", ymin = "median_CI_lo", ymax = "median_CI_hi", colour=kleur_stats), size =3,alpha=input$alphaInput_summ)
+      
+      if (!input$ugly_errors) {
+      p <-  p + geom_point(data=df_summary_median(), aes_string(x="Condition", y = "median", colour=kleur_stats), shape = 21,fill=NA,size = 8,alpha=input$alphaInput_summ)+
+         geom_linerange(data=df_summary_median(), aes_string(x="Condition", ymin = "median_CI_lo", ymax = "median_CI_hi", colour=kleur_stats), size =3,alpha=input$alphaInput_summ)
+      } else {
+      p <-  p + geom_errorbar(data=df_summary_median(), aes_string(x="Condition", ymin="median", ymax="median", colour = kleur_stats), width=width_column, size=1, alpha=input$alphaInput_summ) +
+                 geom_errorbar(data=df_summary_median(), aes_string(x="Condition", ymin="median_CI_lo", ymax="median_CI_hi", colour = kleur_stats), width=width_column/2, size=1, alpha=input$alphaInput_summ)
+      
+    }
+    
     }
 
     else if (input$summaryInput == "median"  && min_n<10) {
       p <-  p + geom_errorbar(data=df_summary_median(), aes_string(x="Condition", ymin="median", ymax="median", colour = kleur_stats), width=width_column, size=1, alpha=input$alphaInput_summ)
 
     } else if (input$summaryInput == "mean"  && input$add_CI == TRUE && min_n>9) {
+      if (!input$ugly_errors) {
       p <- p + geom_linerange(data=df_summary_mean(), aes_string(x="Condition", ymin = "mean_CI_lo", ymax = "mean_CI_hi", colour=kleur_stats), size =3,alpha=input$alphaInput_summ)+
         geom_point(data=df_summary_mean(), aes_string(x="Condition", y = "mean", colour=kleur_stats), shape = 21,fill=NA,size = 8,alpha=input$alphaInput_summ)
+      } else {
+        p <-  p + geom_errorbar(data=df_summary_mean(), aes_string(x="Condition", ymin="mean", ymax="mean", colour = kleur_stats), width=width_column, size=1, alpha=input$alphaInput_summ) +
+          geom_errorbar(data=df_summary_mean(), aes_string(x="Condition", ymin="mean_CI_lo", ymax="mean_CI_hi", colour = kleur_stats), width=width_column/2, size=1, alpha=input$alphaInput_summ)
+        
+      }
 
     } else if (input$summaryInput == "mean"  && min_n<10) {
       p <- p + geom_errorbar(data=df_summary_mean(), aes_string(x="Condition", ymin="mean", ymax="mean", colour=kleur_stats), width=width_column, size=1, alpha=input$alphaInput_summ)
@@ -993,14 +1026,26 @@ plotdata <- reactive({
     else if (input$summaryInput == "mean"  && min_n>9 && input$add_CI == FALSE) {
       p <-  p + geom_errorbar(data=df_summary_mean(), aes_string(x="Condition", ymin="mean", ymax="mean", colour = kleur_stats), width=width_column, size=2, alpha=input$alphaInput_summ)
     }
-    else if (input$summaryInput == "violin"  && min_n>9) {
+    else if (input$summaryInput == "violin"  && min_n>9 && input$add_CI == FALSE) {
       p <-  p + geom_point(data=df_summary_median(), aes_string(x="Condition", y = "median"), colour="black", shape = 21,fill=NA,size = 8,alpha=input$alphaInput_summ)
-      if (input$add_CI == TRUE) {
+      
+    }
+    else if (input$summaryInput == "violin"  && min_n>9 && input$add_CI == TRUE) {
+      if (!input$ugly_errors) {
+        p <-  p + geom_point(data=df_summary_median(), aes_string(x="Condition", y = "median"), colour="black", shape = 21,fill=NA,size = 8,alpha=input$alphaInput_summ)
         p <- p + geom_linerange(data=df_summary_median(), aes_string(x="Condition", ymin = "median_CI_lo", ymax = "median_CI_hi"), colour="black", size =3,alpha=input$alphaInput_summ)
+        
+      } else {
+        p <-  p + geom_errorbar(data=df_summary_median(), aes_string(x="Condition", ymin="median", ymax="median"), width=width_column*0.95, size=1, alpha=input$alphaInput_summ) +
+          geom_errorbar(data=df_summary_median(), aes_string(x="Condition", ymin="median_CI_lo", ymax="median_CI_hi"), width=width_column/2, size=1, alpha=input$alphaInput_summ)
         
       }
       
+      
     }
+    
+    
+    
     
 
 
@@ -1255,13 +1300,14 @@ output$LegendText <- renderText({
       })
 
 
-    # End R-session when browser closed
-    session$onSessionEnded(stopApp)
+
     
     # When a session ends, decrement the counter.
     session$onSessionEnded(function(){
-      # We use isolate() here for the same reasons as above.
+
       isolate(vals$count <- vals$count - 1)
+      # End R-session when browser closed
+#      stopApp()
     })
     
 
