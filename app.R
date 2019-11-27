@@ -159,7 +159,7 @@ ui <- fluidPage(
               "Tol; muted" = 3,
               "Tol; light" = 4,
               "User defined"=5),
-            selected =  1),
+            selected =  6),
       
               conditionalPanel(condition = "input.adjustcolors == 5",
                  textInput("user_color_list", "Names or hexadecimal codes separated by a comma (applied to conditions in alphabetical order):", value = "turquoise2,#FF2222,lawngreen"), 
@@ -335,6 +335,8 @@ ui <- fluidPage(
                   tabPanel("Data upload", h4("Data as provided"),
                   dataTableOutput("data_uploaded")),
                   tabPanel("Plot", downloadButton("downloadPlotPDF", "Download pdf-file"),
+                           downloadButton("downloadPlotSVG", "Download svg-file"), 
+                           downloadButton("downloadPlotEPS", "Download eps-file"), 
                            downloadButton("downloadPlotPNG", "Download png-file"), 
                            actionButton("settings_copy", icon = icon("clone"),
                                         label = "Clone current setting"),
@@ -415,6 +417,11 @@ df_upload <- reactive({
       }
     }
     updateSelectInput(session, "data_remove", choices = names(data))
+    
+    #Replace space and dot of header names by underscore
+    data <- data %>%  
+      select_all(~gsub("\\s+|\\.", "_", .))
+    
     return(data)
 })
   
@@ -827,6 +834,31 @@ output$downloadPlotPDF <- downloadHandler(
     dev.off()
   },
   contentType = "application/pdf" # MIME type of the image
+)
+
+output$downloadPlotSVG <- downloadHandler(
+  filename <- function() {
+    paste("PlotsOfData_", Sys.time(), ".svg", sep = "")
+  },
+  content <- function(file) {
+    svg(file, width = input$plot_width/72, height = input$plot_height/72)
+    plot(plotdata())
+    dev.off()
+  },
+  contentType = "application/svg" # MIME type of the image
+)
+
+output$downloadPlotEPS <- downloadHandler(
+  filename <- function() {
+    paste("PlotsOfData_", Sys.time(), ".eps", sep = "")
+  },
+  content <- function(file) {
+    cairo_ps(file, width = input$plot_width/72, height = input$plot_height/72)
+    plot(plotdata())
+    dev.off()
+
+  },
+  contentType = "application/eps" # MIME type of the image
 )
 
 output$downloadPlotPNG <- downloadHandler(
