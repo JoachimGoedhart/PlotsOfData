@@ -312,7 +312,9 @@ ui <- fluidPage(
         #Session counter: https://gist.github.com/trestletech/9926129
         h4("About"),  "There are currently", 
         verbatimTextOutput("count"),
-        "session(s) connected to this app."    
+        "session(s) connected to this app.",
+        hr(),
+        h4("Find our other dataViz apps at:"),a("https://huygens.science.uva.nl/", href = "https://huygens.science.uva.nl/")
       ),
 
       conditionalPanel(
@@ -380,9 +382,7 @@ df_upload <- reactive({
       } else {
         isolate({
           if (input$file_type == "text") {
-            data <- read_delim(file_in$datapath,
-                               delim = input$upload_delim,
-                               col_names = TRUE)
+            data <- read.csv(file=file_in$datapath, sep = input$upload_delim,na.strings=c("",".","NA", "NaN", "#N/A", "#VALUE!"))
           } else if (input$file_type == "Excel") {
             data <- read_excel(file_in$datapath)
           } 
@@ -741,6 +741,8 @@ df_selected <- reactive({
     y_choice <- input$y_var
 
     koos <- df_temp %>% select(Condition = !!x_choice , Value = !!y_choice) %>% filter(!is.na(Value))
+    koos$Condition <- factor(koos$Condition)
+
 
     } else if (input$tidyInput == FALSE ) {
       koos <- df_upload_tidy() %>% filter(!is.na(Value))
@@ -766,6 +768,7 @@ output$data_uploaded <- renderDataTable(
 
 df_summary_mean <- reactive({
   koos <- df_selected()
+  koos$Condition <- factor(koos$Condition)
 
   koos %>%
     group_by(Condition) %>% 
@@ -784,6 +787,7 @@ df_summary_mean <- reactive({
 df_summary_median <- reactive({
     
     kees <- df_selected()
+    kees$Condition <- factor(kees$Condition)
  
  #   df_booted <- data.frame(Condition=levels(factor(kees$Condition)), n=tapply(kees$Value, kees$Condition, length), median=tapply(kees$Value, kees$Condition, median))
     df_booted <- kees %>%
@@ -883,7 +887,7 @@ plotdata <- reactive({
   
 ####### Read the order from the ordered dataframe #############  
     koos <- df_sorted()
-    
+    koos$Condition <- factor(koos$Condition)
 #   observe({ print(koos) })
     
     custom_order <-  levels(factor(koos$Condition))
@@ -936,6 +940,7 @@ plotdata <- reactive({
     ######## The df_upload_tidy is used for defining colors, needed for compatibility with tidy data and for coloring factors
     klaas <- df_upload_tidy() 
     klaas <- as.data.frame(klaas)
+    
 
     
     if (input$color_data == TRUE || input$color_stats == TRUE) {    
@@ -995,31 +1000,31 @@ plotdata <- reactive({
     
   ##### plot selected data summary (bottom layer) ####
     if (input$summaryInput == "box" && min_n>9) {
-      p <- p + geom_boxplot(data=df_upload_tidy(), aes_string(x=x_choice, y=y_choice, fill=kleur_stats), notch = input$add_CI, outlier.color=NA, width=width_column, size=0.5, alpha=input$alphaInput_summ)
+      p <- p + geom_boxplot(data=koos, aes_string(x='Condition', y='Value', fill=kleur_stats, group='Condition'), notch = input$add_CI, outlier.color=NA, width=width_column, size=0.5, alpha=input$alphaInput_summ)
   
     } else if (input$summaryInput == "violin" && min_n>9) {
-      p <- p + geom_violin(data=df_upload_tidy(), aes_string(x=x_choice, y=y_choice, fill=kleur_stats),scale = "width", 
+      p <- p + geom_violin(data=koos, aes_string(x='Condition', y='Value', fill=kleur_stats, group='Condition'),scale = "width", 
  #                          draw_quantiles = c(0.5),
                            width=width_column, size=0.5, alpha=input$alphaInput_summ) 
     }
 
    #### plot individual measurements (middle layer) ####
     if (input$jitter_type == "quasirandom") {
-      p <- p + geom_quasirandom(data=klaas, aes_string(x=x_choice, y=y_choice, colour = kleur), shape = 16, varwidth = TRUE, cex=3.5, alpha=input$alphaInput)
+      p <- p + geom_quasirandom(data=koos, aes_string(x='Condition', y='Value', colour = kleur), shape = 16, varwidth = TRUE, cex=3.5, alpha=input$alphaInput)
 
 #Uncomment for sinaplot    } else if (input$jitter_type == "sina") {
 #Uncomment for sinaplot p <- p + geom_sina(data=klaas, aes_string(x=x_choice, y=y_choice, colour = kleur), method="density", maxwidth = .8, cex=3, alpha=input$alphaInput)
       
       
     } else if (input$jitter_type == "random") {
-      p <- p + geom_jitter(data=klaas, aes_string(x=x_choice, y=y_choice, colour = kleur), shape = 16, width=0.3, height=0.0, cex=3.5, alpha=input$alphaInput)
+      p <- p + geom_jitter(data=koos, aes_string(x='Condition', y='Value', colour = kleur), shape = 16, width=0.3, height=0.0, cex=3.5, alpha=input$alphaInput)
     } else if (input$jitter_type == "stripes") {
 
       p <- p + geom_segment(data=df_sorted(), aes(x=match(Condition, levels(Condition))-((width_column/2)-0.1), xend=match(Condition, levels(Condition))+((width_column/2)-0.1), y=Value, yend=Value), size=1, color="black", alpha=input$alphaInput)
 
       
     } else if (input$jitter_type == "none") {
-      p <- p + geom_jitter(data=klaas, aes_string(x=x_choice, y=y_choice, colour = kleur), shape = 16, width=0, height=0.0, cex=3.5, alpha=input$alphaInput)
+      p <- p + geom_jitter(data=koos, aes_string(x='Condition', y='Value', colour = kleur), shape = 16, width=0, height=0.0, cex=3.5, alpha=input$alphaInput)
     }
     
   ##### plot selected data summary (top layer) ####
