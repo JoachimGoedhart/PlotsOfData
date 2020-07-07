@@ -224,27 +224,37 @@ ui <- fluidPage(
         ),
         conditionalPanel(
           condition = "input.data_input=='3'",
-          h5("Upload file: "),
-          fileInput("upload", "", multiple = FALSE),
-          selectInput("file_type", "Type of file:",
-                      list("text (csv)" = "text",
-                           "Excel" = "Excel"
-                      ),
-                      selected = "text"),
-          conditionalPanel(
-            condition = "input.file_type=='text'",
-
-          radioButtons(
-              "upload_delim", "Delimiter",
-              choices = 
-                list("Comma" = ",",
-                     "Tab" = "\t",
-                     "Semicolon" = ";",
-                     "Space" = " "),
-              selected = ",")),
           
-          actionButton("submit_datafile_button",
-                       "Submit datafile")),
+          fileInput("upload", NULL, multiple = FALSE, accept = c(".xlsx", ".xls", ".txt", ".csv")),
+          # selectInput("file_type", "Type of file:",
+          #             list(".csv or .txt" = "text",
+          #                  ".xls or .xlsx" = "excel"
+          #             ),
+          #             selected = "text"),
+          
+          #   radioButtons(
+          #     "upload_delim", "Delimiter",
+          #     choices =
+          #       list("Comma" = ",",
+          #            "Tab" = "\t",
+          #            "Semicolon" = ";",
+          #            "Space" = " ")),
+          #     selected = ","),         
+          
+          selectInput("upload_delim", label = "Select Delimiter (for text file):", choices =list("Comma" = ",",
+                                                                                                 "Tab" = "\t",
+                                                                                                 "Semicolon" = ";",
+                                                                                                 "Space" = " ")),
+          
+          
+          selectInput("sheet", label = "Select sheet (for excel workbook):", choices = " ")
+          
+          
+          
+          
+          # actionButton("submit_datafile_button", "Submit datafile")
+          
+        ),
         conditionalPanel(
           condition = "input.data_input=='4'",
           h5("Paste data below:"),
@@ -376,18 +386,48 @@ df_upload <- reactive({
       file_in <- input$upload
       # Avoid error message while file is not uploaded yet
       if (is.null(input$upload)) {
-        return(data.frame(x = "Select your datafile"))
-      } else if (input$submit_datafile_button == 0) {
-        return(data.frame(x = "Press 'submit datafile' button"))
+        return(data.frame(x = "Click 'Browse...' to select a datafile or drop file onto 'Browse' button"))
+        # } else if (input$submit_datafile_button == 0) {
+        #   return(data.frame(x = "Press 'submit datafile' button"))
       } else {
-        isolate({
-          if (input$file_type == "text") {
-            data <- read.csv(file=file_in$datapath, sep = input$upload_delim,na.strings=c("",".","NA", "NaN", "#N/A", "#VALUE!"))
-          } else if (input$file_type == "Excel") {
-            data <- read_excel(file_in$datapath)
-          } 
-        })
+        
+        #Isolate extenstion and convert to lowercase
+        filename_split <- strsplit(file_in$datapath, '[.]')[[1]]
+        fileext <- tolower(filename_split[length(filename_split)])
+        
+        # observe({print(fileext)})
+        
+        # isolate({
+        # data <- read.csv(file=file_in$datapath, sep = input$upload_delim, na.strings=c("",".","NA", "NaN", "#N/A", "#VALUE!"))
+        
+        if (fileext == "txt" || fileext=="csv") {
+          
+          data <- read.csv(file=file_in$datapath, sep = input$upload_delim, na.strings=c("",".","NA", "NaN", "#N/A", "#VALUE!"))
+          updateSelectInput(session, "sheet", choices = " ", selected = " ")
+        } else if (fileext=="xls" || fileext=="xlsx") {
+          names <- excel_sheets(path = input$upload$datapath)
+          # updateSelectInput(session, "sheet_names", choices = names)
+          sheet.selected <<- input$sheet 
+          updateSelectInput(session, "sheet", choices = names, selected = sheet.selected)
+          
+          if (input$sheet %in% names)
+          {
+            n <- which(names==input$sheet)
+            # sheet.selected <<- input$sheet 
+          } else {
+            n <- 1
+            #Ensures update and selection of first sheet upon loading the data
+            updateSelectInput(session, "sheet", choices = names)
+          }
+          
+          # names <- excel_sheets(path = input$upload$datapath)
+          # updateSelectInput(session, "sheet_names", choices = names)
+          data <- read_excel(file_in$datapath, sheet = n , na = c("",".","NA", "NaN", "#N/A", "#VALUE!"))
+        } 
+        
+        # })
       }
+      
     } else if (input$data_input == 5) {
       
       #Read data from a URL
