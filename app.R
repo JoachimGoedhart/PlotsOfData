@@ -44,6 +44,8 @@ library(RCurl)
 #Uncomment for sinaplot
 #library(ggforce)
 
+source("themes.R")
+
 #Function that resamples a vector (with replacement) and calculates the median value
 boot_median = function(x) {
   median(sample(x, replace = TRUE))
@@ -149,7 +151,7 @@ ui <- fluidPage(
         conditionalPanel(
             condition = "input.color_data == true || input.color_stats == true",
             ########## Choose color from list
-            selectInput("colour_list", "Colour:", choices = ""),
+            # selectInput("colour_list", "Colour:", choices = ""),
 
           radioButtons("adjustcolors", "Color palette:", choices = 
             list(
@@ -169,7 +171,7 @@ ui <- fluidPage(
                       href = "http://www.endmemo.com/program/R/color.php", target="_blank"))
                  
         )),
-
+        checkboxInput(inputId = "dark", label = "Dark Theme", value = FALSE),
         numericInput("plot_height", "Height (# pixels): ", value = 480),
         numericInput("plot_width", "Width (# pixels):", value = 480),
 
@@ -224,27 +226,37 @@ ui <- fluidPage(
         ),
         conditionalPanel(
           condition = "input.data_input=='3'",
-          h5("Upload file: "),
-          fileInput("upload", "", multiple = FALSE),
-          selectInput("file_type", "Type of file:",
-                      list("text (csv)" = "text",
-                           "Excel" = "Excel"
-                      ),
-                      selected = "text"),
-          conditionalPanel(
-            condition = "input.file_type=='text'",
-
-          radioButtons(
-              "upload_delim", "Delimiter",
-              choices = 
-                list("Comma" = ",",
-                     "Tab" = "\t",
-                     "Semicolon" = ";",
-                     "Space" = " "),
-              selected = ",")),
           
-          actionButton("submit_datafile_button",
-                       "Submit datafile")),
+          fileInput("upload", NULL, multiple = FALSE, accept = c(".xlsx", ".xls", ".txt", ".csv")),
+          # selectInput("file_type", "Type of file:",
+          #             list(".csv or .txt" = "text",
+          #                  ".xls or .xlsx" = "excel"
+          #             ),
+          #             selected = "text"),
+          
+          #   radioButtons(
+          #     "upload_delim", "Delimiter",
+          #     choices =
+          #       list("Comma" = ",",
+          #            "Tab" = "\t",
+          #            "Semicolon" = ";",
+          #            "Space" = " ")),
+          #     selected = ","),         
+          
+          selectInput("upload_delim", label = "Select Delimiter (for text file):", choices =list("Comma" = ",",
+                                                                                                 "Tab" = "\t",
+                                                                                                 "Semicolon" = ";",
+                                                                                                 "Space" = " ")),
+          
+          
+          selectInput("sheet", label = "Select sheet (for excel workbook):", choices = " ")
+          
+          
+          
+          
+          # actionButton("submit_datafile_button", "Submit datafile")
+          
+        ),
         conditionalPanel(
           condition = "input.data_input=='4'",
           h5("Paste data below:"),
@@ -376,18 +388,48 @@ df_upload <- reactive({
       file_in <- input$upload
       # Avoid error message while file is not uploaded yet
       if (is.null(input$upload)) {
-        return(data.frame(x = "Select your datafile"))
-      } else if (input$submit_datafile_button == 0) {
-        return(data.frame(x = "Press 'submit datafile' button"))
+        return(data.frame(x = "Click 'Browse...' to select a datafile or drop file onto 'Browse' button"))
+        # } else if (input$submit_datafile_button == 0) {
+        #   return(data.frame(x = "Press 'submit datafile' button"))
       } else {
-        isolate({
-          if (input$file_type == "text") {
-            data <- read.csv(file=file_in$datapath, sep = input$upload_delim,na.strings=c("",".","NA", "NaN", "#N/A", "#VALUE!"))
-          } else if (input$file_type == "Excel") {
-            data <- read_excel(file_in$datapath)
-          } 
-        })
+        
+        #Isolate extenstion and convert to lowercase
+        filename_split <- strsplit(file_in$datapath, '[.]')[[1]]
+        fileext <- tolower(filename_split[length(filename_split)])
+        
+        # observe({print(fileext)})
+        
+        # isolate({
+        # data <- read.csv(file=file_in$datapath, sep = input$upload_delim, na.strings=c("",".","NA", "NaN", "#N/A", "#VALUE!"))
+        
+        if (fileext == "txt" || fileext=="csv") {
+          
+          data <- read.csv(file=file_in$datapath, sep = input$upload_delim, na.strings=c("",".","NA", "NaN", "#N/A", "#VALUE!"))
+          updateSelectInput(session, "sheet", choices = " ", selected = " ")
+        } else if (fileext=="xls" || fileext=="xlsx") {
+          names <- excel_sheets(path = input$upload$datapath)
+          # updateSelectInput(session, "sheet_names", choices = names)
+          sheet.selected <<- input$sheet 
+          updateSelectInput(session, "sheet", choices = names, selected = sheet.selected)
+          
+          if (input$sheet %in% names)
+          {
+            n <- which(names==input$sheet)
+            # sheet.selected <<- input$sheet 
+          } else {
+            n <- 1
+            #Ensures update and selection of first sheet upon loading the data
+            updateSelectInput(session, "sheet", choices = names)
+          }
+          
+          # names <- excel_sheets(path = input$upload$datapath)
+          # updateSelectInput(session, "sheet_names", choices = names)
+          data <- read_excel(file_in$datapath, sheet = n , na = c("",".","NA", "NaN", "#N/A", "#VALUE!"))
+        } 
+        
+        # })
       }
+      
     } else if (input$data_input == 5) {
       
       #Read data from a URL
@@ -475,7 +517,7 @@ observe({
         
         facet_list <- c(".",nms_fact)
 
-        updateSelectInput(session, "colour_list", choices = nms_fact)
+        # updateSelectInput(session, "colour_list", choices = nms_fact)
         updateSelectInput(session, "y_var", choices = vary_list)
         updateSelectInput(session, "x_var", choices = varx_list)
         updateSelectInput(session, "h_facet", choices = facet_list)
@@ -574,7 +616,7 @@ observe({
     presets_color <- query[['color']]
     presets_color <- unlist(strsplit(presets_color,";"))
 
-    updateSelectInput(session, "colour_list", selected = presets_color[1])
+    # updateSelectInput(session, "colour_list", selected = presets_color[1])
     updateTextInput(session, "user_color_list", value= presets_color[2])
   }
 
@@ -630,9 +672,9 @@ url <- reactive({
 
   #Hide the standard list of colors if it is'nt used
    if (input$adjustcolors != "5") {
-     color <- c(input$colour_list, "none")
+     color <- c("", "none")
    } else if (input$adjustcolors == "5") {
-     color <- c(input$colour_list, input$user_color_list)
+     color <- c("", input$user_color_list)
    }
   
   label <- c(input$add_title, input$title, input$label_axes, input$lab_x, input$lab_y, input$adj_fnt_sz, input$fnt_sz_ttl, input$fnt_sz_ax, input$add_description)
@@ -897,7 +939,12 @@ plotdata <- reactive({
 #   observe({ print(custom_labels) })    
     width_column <- 0.7
     
-
+    # Change linecolor in case of dark mode
+    if (input$dark) {
+      line_color="grey80"
+    } else if (input$dark==FALSE) {
+      line_color="black"
+    } 
   
   ########## Define alternative color palettes ##########
   
@@ -933,23 +980,16 @@ plotdata <- reactive({
   if (input$color_data == FALSE) {
     kleur <- NULL
   } else if (input$color_data == TRUE) {
-        kleur <- as.character(input$colour_list)
+        # kleur <- as.character(input$colour_list)
+        kleur <- "Condition"
   }
   
 
-    ######## The df_upload_tidy is used for defining colors, needed for compatibility with tidy data and for coloring factors
-    klaas <- df_upload_tidy() 
-    klaas <- as.data.frame(klaas)
-    
-
-    
     if (input$color_data == TRUE || input$color_stats == TRUE) {    
-    #### Used to convert integers to factors, compatible with a discrete color scale
-    klaas[,kleur] <- as.factor(klaas[,kleur])
-
     #Determine the number of colors that are necessary
-    max_colors <- nlevels(as.factor(klaas[,kleur]))
-    
+      max_colors <- nlevels(as.factor(koos$Condition))
+      # max_colors <- nlevels(as.factor(klaas[,kleur]))
+      
     
         #If unsufficient colors available, repeat
         if(length(newColors) < max_colors) {
@@ -1000,10 +1040,10 @@ plotdata <- reactive({
     
   ##### plot selected data summary (bottom layer) ####
     if (input$summaryInput == "box" && min_n>9) {
-      p <- p + geom_boxplot(data=koos, aes_string(x='Condition', y='Value', fill=kleur_stats, group='Condition'), notch = input$add_CI, outlier.color=NA, width=width_column, size=0.5, alpha=input$alphaInput_summ)
+      p <- p + geom_boxplot(data=koos, aes_string(x='Condition', y='Value', fill=kleur_stats, group='Condition'), color=line_color, notch = input$add_CI, outlier.color=NA, width=width_column, size=0.5, alpha=input$alphaInput_summ)
   
     } else if (input$summaryInput == "violin" && min_n>9) {
-      p <- p + geom_violin(data=koos, aes_string(x='Condition', y='Value', fill=kleur_stats, group='Condition'),scale = "width", 
+      p <- p + geom_violin(data=koos, aes_string(x='Condition', y='Value', fill=kleur_stats, group='Condition'), color=line_color,scale = "width", 
  #                          draw_quantiles = c(0.5),
                            width=width_column, size=0.5, alpha=input$alphaInput_summ) 
     }
@@ -1020,7 +1060,7 @@ plotdata <- reactive({
       p <- p + geom_jitter(data=koos, aes_string(x='Condition', y='Value', colour = kleur), shape = 16, width=0.3, height=0.0, cex=3.5, alpha=input$alphaInput)
     } else if (input$jitter_type == "stripes") {
 
-      p <- p + geom_segment(data=df_sorted(), aes(x=match(Condition, levels(Condition))-((width_column/2)-0.1), xend=match(Condition, levels(Condition))+((width_column/2)-0.1), y=Value, yend=Value), size=1, color="black", alpha=input$alphaInput)
+      p <- p + geom_segment(data=df_sorted(), aes(x=match(Condition, levels(Condition))-((width_column/2)-0.1), xend=match(Condition, levels(Condition))+((width_column/2)-0.1), y=Value, yend=Value, colour = kleur), size=1, alpha=input$alphaInput)
 
       
     } else if (input$jitter_type == "none") {
@@ -1089,6 +1129,7 @@ plotdata <- reactive({
 ########### Do some formatting of the lay-out ###########
 
      p <- p+ theme_light(base_size = 16)
+    if (input$dark) {p <- p+ theme_darker(base_size = 16)}
     
 
      # if log-scale checked specified
