@@ -957,6 +957,7 @@ plotdata <- reactive({
     } else if (input$adjustcolors == 4) {
       newColors <- Tol_light
     } else if (input$adjustcolors == 6) {
+      Okabe_Ito[8] <- line_color
       newColors <- Okabe_Ito
     } else if (input$adjustcolors == 5) {
       newColors <- gsub("\\s","", strsplit(input$user_color_list,",")[[1]])
