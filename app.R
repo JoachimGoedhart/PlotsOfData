@@ -1001,10 +1001,10 @@ plotdata <- reactive({
   #    observe({ print(class(input$colour_list)) })
   if (input$color_stats == FALSE) {
     kleur_stats <- NULL
-  } else if (input$color_stats == TRUE && input$summaryInput == "box") {
-    kleur_stats <- x_choice
-  } else if (input$color_stats == TRUE && input$summaryInput == "violin") {
-    kleur_stats <- x_choice
+  # } else if (input$color_stats == TRUE && input$summaryInput == "box") {
+  #   kleur_stats <- x_choice
+  # } else if (input$color_stats == TRUE && input$summaryInput == "violin") {
+  #   kleur_stats <- x_choice
   } else if (input$color_stats == TRUE) {
     kleur_stats <- "Condition"
   }  
