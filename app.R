@@ -1156,11 +1156,20 @@ plotdata <- reactive({
     # if title specified
     if (input$add_title)
       p <- p + ggtitle(input$title)
-    
+     
+     
+     # if tidy data, use the labels from selected columns
+     if (!input$label_axes && input$tidyInput == TRUE ) 
+     {
+        y_label <- paste(input$y_var)
+        x_label <- paste(input$x_var)
+        p <- p + labs(x = x_label, y = y_label)
+     }
+     
     # if labels specified
     if (input$label_axes)
       p <- p + labs(x = input$lab_x, y = input$lab_y)
-    
+     
     # if font size is adjusted
     if (input$adj_fnt_sz) {
       p <- p + theme(axis.text = element_text(size=input$fnt_sz_ax))
