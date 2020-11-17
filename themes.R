@@ -60,6 +60,57 @@ theme_darker <- function(base_size = 11, base_family = "",  base_line_size = bas
   
 }
 
+theme_light_dark_bg <- function(base_size = 11, base_family = "",
+                             base_line_size = base_size / 22,
+                             base_rect_size = base_size / 22) {
+  half_line <- base_size / 2
+  
+  # Starts with theme_grey and then modify some parts
+  theme_grey(
+    base_size = base_size,
+    base_family = base_family,
+    base_line_size = base_line_size,
+    base_rect_size = base_rect_size
+  ) %+replace%
+    theme(
+      plot.background = element_rect(colour = "black", fill="black"), 
+      text = element_text(family = base_family, face = "plain", colour = "grey100", size = base_size,
+                          lineheight = 0.9, hjust = 0.5, vjust = 0.5, angle = 0, margin = margin(), debug = FALSE) ,
+      axis.text = element_text(size = rel(0.8),colour = "grey80"),
+      
+      
+      # axis.text = element_text(colour = "grey80"),
+      
+      # white panel with light grey border
+      panel.background = element_rect(fill = "grey5", colour = NA),
+      panel.border     = element_rect(fill = NA, colour = "grey80", size = rel(1)),
+      # light grey, thinner gridlines
+      # => make them slightly darker to keep acceptable contrast
+      panel.grid       = element_line(colour = "grey30"),
+      panel.grid.major = element_line(size = rel(0.5)),
+      panel.grid.minor = element_line(size = rel(0.25)),
+      
+      # match axes ticks thickness to gridlines and colour to panel border
+      axis.ticks       = element_line(colour = "grey80", size = rel(0.5)),
+      
+      # match legend key to plot.background
+      legend.background = element_rect(fill= "black", colour = NULL),
+      legend.key       = element_rect(fill = "black", colour = NULL),
+      
+      # dark strips with light text (inverse contrast compared to theme_grey)
+      strip.background = element_rect(fill = "grey40", colour = NA),
+      strip.text       = element_text(
+        colour = "grey10",
+        size = rel(0.8),
+        margin = margin(0.8 * half_line, 0.8 * half_line, 0.8 * half_line, 0.8 * half_line)
+      ),
+      
+      complete = TRUE
+    )
+  
+}
+
+
 
 ############## https://debruine.github.io/posts/plot-comparison/
 
@@ -112,7 +163,7 @@ blue_theme <- function() {
 
 
 
-####### Definition of the 'official' grey ggplot2 theme
+####### Definition of the 'official' ggplot2 theme_grey
 
 
 # theme_grey <- function (base_size = 11, base_family = "") 
@@ -151,4 +202,48 @@ blue_theme <- function() {
 #         plot.title = element_text(size = rel(1.2), margin = margin(b = half_line * 
 #                                                                      1.2)), plot.margin = margin(half_line, half_line, 
 #                                                                                                  half_line, half_line), complete = TRUE)
+# }
+
+
+####### Definition of the ggplot2 theme_light
+# 
+# theme_light <- function(base_size = 11, base_family = "",
+#                         base_line_size = base_size / 22,
+#                         base_rect_size = base_size / 22) {
+#   half_line <- base_size / 2
+#   
+#   # Starts with theme_grey and then modify some parts
+#   theme_grey(
+#     base_size = base_size,
+#     base_family = base_family,
+#     base_line_size = base_line_size,
+#     base_rect_size = base_rect_size
+#   ) %+replace%
+#     theme(
+#       # white panel with light grey border
+#       panel.background = element_rect(fill = "white", colour = NA),
+#       panel.border     = element_rect(fill = NA, colour = "grey70", size = rel(1)),
+#       # light grey, thinner gridlines
+#       # => make them slightly darker to keep acceptable contrast
+#       panel.grid       = element_line(colour = "grey87"),
+#       panel.grid.major = element_line(size = rel(0.5)),
+#       panel.grid.minor = element_line(size = rel(0.25)),
+#       
+#       # match axes ticks thickness to gridlines and colour to panel border
+#       axis.ticks       = element_line(colour = "grey70", size = rel(0.5)),
+#       
+#       # match legend key to panel.background
+#       legend.key       = element_rect(fill = "white", colour = NA),
+#       
+#       # dark strips with light text (inverse contrast compared to theme_grey)
+#       strip.background = element_rect(fill = "grey70", colour = NA),
+#       strip.text       = element_text(
+#         colour = "white",
+#         size = rel(0.8),
+#         margin = margin(0.8 * half_line, 0.8 * half_line, 0.8 * half_line, 0.8 * half_line)
+#       ),
+#       
+#       complete = TRUE
+#     )
+#   
 # }
