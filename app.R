@@ -544,6 +544,22 @@ observeEvent(input$add_bar, {
   }
 })
 
+observeEvent(input$dark, {
+  if (input$dark==TRUE) {
+    updateCheckboxInput(session,"color_data", value=TRUE)
+    updateCheckboxInput(session,"color_stats", value=TRUE)
+    updateRadioButtons(session, "adjustcolors", selected=5)
+    updateTextInput(session, "user_color_list", value = "grey80")
+  } else if (input$dark==FALSE) {
+    updateCheckboxInput(session,"color_data", value=FALSE)
+    updateCheckboxInput(session,"color_stats", value=FALSE)
+    updateRadioButtons(session, "adjustcolors", selected=6)
+  }
+  
+})
+
+
+
 ########### GET INPUT VARIABLEs FROM HTML ##############
 
 observe({
@@ -926,7 +942,6 @@ output$downloadPlotPNG <- downloadHandler(
 
 plotdata <- reactive({
 
-  
 ####### Read the order from the ordered dataframe #############  
     koos <- df_sorted()
     koos$Condition <- factor(koos$Condition)
@@ -945,6 +960,7 @@ plotdata <- reactive({
     } else if (input$dark==FALSE) {
       line_color="black"
     } 
+    
   
   ########## Define alternative color palettes ##########
   
@@ -983,6 +999,7 @@ plotdata <- reactive({
   } else if (input$color_data == TRUE) {
         # kleur <- as.character(input$colour_list)
         kleur <- "Condition"
+
   }
   
 
@@ -1105,17 +1122,17 @@ plotdata <- reactive({
       p <-  p + geom_errorbar(data=df_summary_mean(), aes_string(x="Condition", ymin="mean", ymax="mean", colour = kleur_stats), width=width_column, size=2, alpha=input$alphaInput_summ)
     }
     else if (input$summaryInput == "violin"  && min_n>9 && input$add_CI == FALSE) {
-      p <-  p + geom_point(data=df_summary_median(), aes_string(x="Condition", y = "median"), colour="black", shape = 21,fill=NA,size = 8,alpha=input$alphaInput_summ)
+      p <-  p + geom_point(data=df_summary_median(), aes_string(x="Condition", y = "median"), colour=line_color, shape = 21,fill=NA,size = 8,alpha=input$alphaInput_summ)
       
     }
     else if (input$summaryInput == "violin"  && min_n>9 && input$add_CI == TRUE) {
       if (!input$ugly_errors) {
-        p <-  p + geom_point(data=df_summary_median(), aes_string(x="Condition", y = "median"), colour="black", shape = 21,fill=NA,size = 8,alpha=input$alphaInput_summ)
-        p <- p + geom_linerange(data=df_summary_median(), aes_string(x="Condition", ymin = "median_CI_lo", ymax = "median_CI_hi"), colour="black", size =3,alpha=input$alphaInput_summ)
+        p <-  p + geom_point(data=df_summary_median(), aes_string(x="Condition", y = "median"), colour=line_color, shape = 21,fill=NA,size = 8,alpha=input$alphaInput_summ)
+        p <- p + geom_linerange(data=df_summary_median(), aes_string(x="Condition", ymin = "median_CI_lo", ymax = "median_CI_hi"), colour=line_color, size =3,alpha=input$alphaInput_summ)
         
       } else {
-        p <-  p + geom_errorbar(data=df_summary_median(), aes_string(x="Condition", ymin="median", ymax="median"), width=width_column*0.95, size=1, alpha=input$alphaInput_summ) +
-          geom_errorbar(data=df_summary_median(), aes_string(x="Condition", ymin="median_CI_lo", ymax="median_CI_hi"), width=width_column/2, size=1, alpha=input$alphaInput_summ)
+        p <-  p + geom_errorbar(data=df_summary_median(), aes_string(x="Condition", ymin="median", ymax="median"), colour=line_color, width=width_column*0.95, size=1, alpha=input$alphaInput_summ) +
+          geom_errorbar(data=df_summary_median(), aes_string(x="Condition", ymin="median_CI_lo", ymax="median_CI_hi"), colour=line_color, width=width_column/2, size=1, alpha=input$alphaInput_summ)
         
       }
       
