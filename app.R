@@ -286,9 +286,9 @@ ui <- fluidPage(
                       label = "These data are Tidy",
                       value = FALSE),
         
-        conditionalPanel(
-          condition = "input.tidyInput==false", selectInput("data_remove", "Select columns to remove", "", multiple = TRUE)),
-        
+        # conditionalPanel(
+        #   condition = "input.tidyInput==false", selectInput("data_remove", "Select columns to remove", "", multiple = TRUE)),
+        # 
         conditionalPanel(
           condition = "input.tidyInput==true",
 
@@ -299,6 +299,9 @@ ui <- fluidPage(
 
           NULL
           ), 
+          selectInput("use_these_conditions", "Select and order:", "", multiple = TRUE),
+          hr(),
+
         
         
         
@@ -458,7 +461,7 @@ df_upload <- reactive({
         }
       }
     }
-    updateSelectInput(session, "data_remove", choices = names(data))
+    # updateSelectInput(session, "data_remove", choices = names(data))
     
     #Replace space and dot of header names by underscore
     data <- data %>%  
@@ -469,15 +472,33 @@ df_upload <- reactive({
   
   
 ##### REMOVE SELECTED COLUMNS #########
+##### REMOVE SELECTED COLUMNS #########
 df_filtered <- reactive({     
   
-  if (!is.null(input$data_remove)) {
-    columns = input$data_remove
-    df <- df_upload() %>% select(-one_of(columns))
-  } else if (is.null(input$data_remove)) {
-  df <- df_upload()}
+  if (!is.null(input$use_these_conditions)) {
+    
+    if (input$tidyInput == TRUE && input$x_var!='none') {
+    x_var <- input$x_var
+    } else if (input$tidyInput == FALSE) {x_var <- 'Condition'
+    } else {return(df_upload_tidy())}
+    use_these_conditions <- input$use_these_conditions
+    
+    observe({print(use_these_conditions)})
+    
+    #Remove the columns that are selected (using filter() with the exclamation mark preceding the condition)
+    # https://dplyr.tidyverse.org/reference/filter.html
+    df <- df_upload_tidy() %>% filter(.data[[x_var[[1]]]] %in% !!use_these_conditions)
+    
+    
+  } else {df <- df_upload_tidy()}
+  
+  #Replace space and dot of header names by underscore
+  df <- df %>%  
+    select_all(~gsub("\\s+|\\.", "_", .))
+  
   
 })
+
 
 ##### CONVERT TO TIDY DATA ##########
   
@@ -487,9 +508,7 @@ df_filtered <- reactive({
 #Tidy data will be used as supplied
 df_upload_tidy <- reactive({
     if(input$tidyInput == FALSE ) {
-      klaas <- df_upload()
-
-      klaas <- df_filtered() %>% gather(Condition, Value)
+      klaas <- df_upload() %>% gather(Condition, Value)
     }
     else if(input$tidyInput == TRUE ) {
       klaas <- df_upload()
@@ -500,7 +519,7 @@ df_upload_tidy <- reactive({
 ##### Get Variables from the input ##############
 
 observe({ 
-        var_names  <- names(df_upload())
+        var_names  <- names(df_upload_tidy())
         varx_list <- c("none", var_names)
 
         # Get the names of columns that are factors. These can be used for coloring the data with discrete colors        
@@ -528,6 +547,66 @@ observe({
 #       }
 
     })
+
+########### When x_var is selected for tidy data, get the list of conditions
+####### THIS STILL NEEDS SOME WORK ############
+####### when switching back from tidy to non-tidy, the 'use_these_conditions' is not updated
+####### I should probably take the df_filtered/df_sorted code from SuperPlotsOfData
+
+
+observeEvent(input$x_var != 'none' || input$tidyInput == FALSE, {
+  
+  if (input$x_var != 'none' && input$tidyInput == TRUE) {
+    
+    filter_column <- input$x_var
+    
+    if (filter_column == "") {filter_column <- NULL}
+    
+    koos <- df_upload() %>% select(for_filtering = !!filter_column)
+    
+    conditions_list <- levels(factor(koos$for_filtering))
+    # observe(print((conditions_list)))
+    updateSelectInput(session, "use_these_conditions", choices = conditions_list)
+  } else if (input$tidyInput == FALSE) {
+    
+    koos <- df_upload_tidy()
+    conditions_list <- levels(factor(koos$Condition))
+    updateSelectInput(session, "use_these_conditions", choices = conditions_list)
+    
+  }
+  
+  
+  
+})
+
+
+##### REMOVE SELECTED COLUMNS #########
+df_filtered <- reactive({     
+  
+  if (!is.null(input$use_these_conditions) && input$x_var != "none") {
+    
+    x_var <- input$x_var
+    use_these_conditions <- input$use_these_conditions
+    
+    observe({print(use_these_conditions)})
+    
+    #Remove the columns that are selected (using filter() with the exclamation mark preceding the condition)
+    # https://dplyr.tidyverse.org/reference/filter.html
+    df <- df_upload() %>% filter(.data[[x_var[[1]]]] %in% !!use_these_conditions)
+    
+    
+  } else {df <- df_upload()}
+  
+  #Replace space and dot of header names by underscore
+  df <- df %>%  
+    select_all(~gsub("\\s+|\\.", "_", .))
+  
+  
+})
+
+
+
+
 
 # observeEvent(input$add_bar, {
 #   showNotification("clicked!", type = "default")
@@ -557,8 +636,6 @@ observeEvent(input$dark, {
   }
   
 })
-
-
 
 ########### GET INPUT VARIABLEs FROM HTML ##############
 
@@ -779,9 +856,16 @@ df_sorted <- reactive({
    if(input$ordered == "median") {
      klaas$Condition <- reorder(klaas$Condition, klaas$Value, median, na.rm = TRUE)
 
-   } else if (input$ordered == "none") {
-      klaas$Condition <- factor(klaas$Condition, levels=unique(klaas$Condition))
 
+   } else if (input$ordered == "none") {
+
+     if (!is.null(input$use_these_conditions)) {
+       # Set order based on input
+       klaas$Condition <- factor(klaas$Condition, levels = input$use_these_conditions)}
+     else {
+       klaas$Condition <- factor(klaas$Condition, levels=unique(klaas$Condition))
+     }
+    
    } else if (input$ordered == "alphabet") {
      klaas$Condition <- factor(klaas$Condition, levels=unique(sort(klaas$Condition)))
    }  
@@ -1019,10 +1103,6 @@ plotdata <- reactive({
   #    observe({ print(class(input$colour_list)) })
   if (input$color_stats == FALSE) {
     kleur_stats <- NULL
-  } else if (input$color_stats == TRUE && input$summaryInput == "box") {
-    kleur_stats <- x_choice
-  } else if (input$color_stats == TRUE && input$summaryInput == "violin") {
-    kleur_stats <- x_choice
   } else if (input$color_stats == TRUE) {
     kleur_stats <- "Condition"
   }  
