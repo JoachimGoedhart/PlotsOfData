@@ -1,0 +1,12 @@
+name: PlotsOfData
+title: PlotsOfData
+username:
+account: amsterdamstudygroup
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 5282477
+bundleId: 6003411
+url: https://amsterdamstudygroup.shinyapps.io/PlotsOfData/
+when: 1655135245.49817
+asMultiple: FALSE
+asStatic: FALSE

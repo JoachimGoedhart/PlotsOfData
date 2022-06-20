@@ -168,7 +168,7 @@ ui <- fluidPage(
                  
                  h5("",
                     a("Click here for more info on color names",
-                      href = "http://www.endmemo.com/program/R/color.php", target="_blank"))
+                      href = "https://r-charts.com/colors/", target="_blank"))
                  
         )),
         checkboxInput(inputId = "dark", label = "Dark Theme", value = FALSE),
