@@ -31,13 +31,8 @@
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 library(shiny)
-library(ggplot2)
-library(dplyr)
-library(tidyr)
-library(readr)
-library(magrittr)
+library(tidyverse)
 library(ggbeeswarm)
-library(readxl)
 library(DT)
 library(RCurl)
 
@@ -410,7 +405,7 @@ df_upload <- reactive({
           data <- read.csv(file=file_in$datapath, sep = input$upload_delim, na.strings=c("",".","NA", "NaN", "#N/A", "#VALUE!"))
           updateSelectInput(session, "sheet", choices = " ", selected = " ")
         } else if (fileext=="xls" || fileext=="xlsx") {
-          names <- excel_sheets(path = input$upload$datapath)
+          names <- readxl::excel_sheets(path = input$upload$datapath)
           # updateSelectInput(session, "sheet_names", choices = names)
           sheet.selected <<- input$sheet 
           updateSelectInput(session, "sheet", choices = names, selected = sheet.selected)
@@ -427,7 +422,7 @@ df_upload <- reactive({
           
           # names <- excel_sheets(path = input$upload$datapath)
           # updateSelectInput(session, "sheet_names", choices = names)
-          data <- read_excel(file_in$datapath, sheet = n , na = c("",".","NA", "NaN", "#N/A", "#VALUE!"))
+          data <- readxl::read_excel(file_in$datapath, sheet = n , na = c("",".","NA", "NaN", "#N/A", "#VALUE!"))
         } 
         
         # })
