@@ -29,9 +29,10 @@ Or download it to use it offline:
 -Select 'Run All' (shortcut is command-option-R on a Mac) or click on "Run App" (upper right button on the window)
 
 This should launch a web browser with the Shiny app.
-Note that the app depends on several R packages that need to be installed (shiny, ggplot2, dplyr, tidyr, readr, magrittr, ggbeeswarm, readxl, RCurl)
+Note that the app depends on several R packages that need to be installed (shiny, tidyverse, dplyr, ggbeeswarm, RCurl)
 Run this command in R/Rstudio to download and install all the packages at once:
--install.packages("shiny", "ggplot2", "dplyr", "tidyr", "readr", "readxl", "magrittr", "DT", "ggbeeswarm", "RCurl")
+-install.packages("shiny", "tidyverse", "DT", "ggbeeswarm", "RCurl")
+
 
 ### Background info
 
