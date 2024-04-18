@@ -46,6 +46,11 @@ boot_median = function(x) {
   median(sample(x, replace = TRUE))
 }
 
+geom_mean <- function(x) {
+  exp(mean(log(x), na.rm=TRUE))
+}
+
+
 i=0
 #Number of bootstrap samples
 nsteps=1000
@@ -101,8 +106,9 @@ ui <- fluidPage(
         
         sliderInput("alphaInput", "Visibility of the data", 0, 1, 0.3),
 
-        radioButtons("summaryInput", "Statistics", choices = list("Median" = "median", "Mean" = "mean", "Boxplot (minimum n=10)" = "box", "Violin Plot (minimum n=10)" = "violin"), selected = "median"),
+        radioButtons("summaryInput", "Statistics", choices = list("Median" = "median", "Mean" = "mean", "Geometric Mean" = "geom_mean", "Boxplot (minimum n=10)" = "box", "Violin Plot (minimum n=10)" = "violin"), selected = "median"),
         checkboxInput(inputId = "add_CI", label = HTML("Add 95% CI <br/> (minimum n=10)"), value = FALSE),
+        checkboxInput(inputId = "add_SD", label = HTML("Add S.D."), value = FALSE),
         conditionalPanel(
           condition = "input.add_CI == true && input.summaryInput !='box'",
           checkboxInput(inputId = "ugly_errors", label = "Classic error bars", value = FALSE)),
@@ -294,14 +300,18 @@ ui <- fluidPage(
 
           NULL
           ), 
-          selectInput("use_these_conditions", "Select and order:", "", multiple = TRUE),
-          hr(),
+          
+
 
         
         
         
         conditionalPanel(
-          condition = "input.tidyInput==false", (downloadButton("downloadData", "Download in tidy format (csv)"))),
+          condition = "input.tidyInput==false", 
+          selectInput("use_these_conditions", "Select and order:", "", multiple = TRUE),
+          downloadButton("downloadData", "Download in tidy format (csv)")
+          
+          ),
 
         hr(),
 
@@ -465,34 +475,27 @@ df_upload <- reactive({
     return(data)
 })
   
-  
 ##### REMOVE SELECTED COLUMNS #########
-##### REMOVE SELECTED COLUMNS #########
-df_filtered <- reactive({     
-  
-  if (!is.null(input$use_these_conditions)) {
-    
-    if (input$tidyInput == TRUE && input$x_var!='none') {
-    x_var <- input$x_var
-    } else if (input$tidyInput == FALSE) {x_var <- 'Condition'
-    } else {return(df_upload_tidy())}
-    use_these_conditions <- input$use_these_conditions
-    
-    observe({print(use_these_conditions)})
-    
-    #Remove the columns that are selected (using filter() with the exclamation mark preceding the condition)
-    # https://dplyr.tidyverse.org/reference/filter.html
-    df <- df_upload_tidy() %>% filter(.data[[x_var[[1]]]] %in% !!use_these_conditions)
-    
-    
-  } else {df <- df_upload_tidy()}
-  
-  #Replace space and dot of header names by underscore
-  df <- df %>%  
-    select_all(~gsub("\\s+|\\.", "_", .))
-  
-  
-})
+# df_filtered <- reactive({
+# 
+#   if (!is.null(input$use_these_conditions)) {
+# 
+#     if (input$tidyInput == TRUE && input$x_var!='none') {
+#       x_var <- input$x_var
+#     } else if (input$tidyInput == FALSE) {x_var <- 'Condition'
+#     } else {return(df_upload_tidy())}
+#     use_these_conditions <- input$use_these_conditions
+# 
+#     observe({print(use_these_conditions)})
+# 
+#     #Remove the columns that are selected (using filter() with the exclamation mark preceding the condition)
+#     # https://dplyr.tidyverse.org/reference/filter.html
+#     df <- df_upload_tidy() %>% filter(.data[[x_var[[1]]]] %in% !!use_these_conditions)
+# 
+# 
+#   } else {df <- df_upload_tidy()}
+# 
+# })
 
 
 ##### CONVERT TO TIDY DATA ##########
@@ -575,29 +578,7 @@ observeEvent(input$x_var != 'none' || input$tidyInput == FALSE, {
 })
 
 
-##### REMOVE SELECTED COLUMNS #########
-df_filtered <- reactive({     
-  
-  if (!is.null(input$use_these_conditions) && input$x_var != "none") {
-    
-    x_var <- input$x_var
-    use_these_conditions <- input$use_these_conditions
-    
-    observe({print(use_these_conditions)})
-    
-    #Remove the columns that are selected (using filter() with the exclamation mark preceding the condition)
-    # https://dplyr.tidyverse.org/reference/filter.html
-    df <- df_upload() %>% filter(.data[[x_var[[1]]]] %in% !!use_these_conditions)
-    
-    
-  } else {df <- df_upload()}
-  
-  #Replace space and dot of header names by underscore
-  df <- df %>%  
-    select_all(~gsub("\\s+|\\.", "_", .))
-  
-  
-})
+
 
 
 
@@ -846,11 +827,37 @@ observeEvent(input$add_CI , {
 
 df_sorted <- reactive({
   
-  klaas <-  df_selected()
-
+  #######################################
+  ######### FILTER based on SELECTION ###
+  
+  if (!is.null(input$use_these_conditions)) {
+    
+    if (input$tidyInput == TRUE && input$x_var!='none') {
+      x_var <- input$x_var
+    } else if (input$tidyInput == FALSE) {x_var <- 'Condition'
+    } else {return(df_selected())}
+    use_these_conditions <- input$use_these_conditions
+    
+    observe({print(use_these_conditions)})
+    
+    #Remove the columns that are selected (using filter() with the exclamation mark preceding the condition)
+    # https://dplyr.tidyverse.org/reference/filter.html
+    df <- df_selected() %>% filter(.data[[x_var[[1]]]] %in% !!use_these_conditions)
+    
+    
+  } else {df <- df_selected()}
+  
+  klaas <-  df
+  
+  ##############################################
+  ######### SORT based on USER INPUT ###########
+  ######### INPUT FROM 'select and order' ######
+  ######### OR: order the condition of plot ####
+  
+  
    if(input$ordered == "median") {
-     klaas$Condition <- reorder(klaas$Condition, klaas$Value, median, na.rm = TRUE)
-
+     # klaas$Condition <- reorder(klaas$Condition, klaas$Value, median, na.rm = TRUE)
+      klaas <- klaas %>% mutate(Condition = fct_reorder(Condition, Value, median))
 
    } else if (input$ordered == "none") {
 
@@ -878,13 +885,15 @@ df_selected <- reactive({
     y_choice <- input$y_var
 
     koos <- df_temp %>% select(Condition = !!x_choice , Value = !!y_choice) %>% filter(!is.na(Value))
-    koos$Condition <- factor(koos$Condition)
+    # koos$Condition <- factor(koos$Condition)
 
 
     } else if (input$tidyInput == FALSE ) {
       koos <- df_upload_tidy() %>% filter(!is.na(Value))
     }
   
+  
+    koos <- koos %>% mutate(Condition = as.factor(Condition))
     return(koos)
 })
 
@@ -894,7 +903,7 @@ df_selected <- reactive({
 output$data_uploaded <- renderDataTable(
 
 #    observe({ print(input$tidyInput) })
-  df_filtered(),
+  df_upload(),
   rownames = FALSE,
   options = list(pageLength = 100, autoWidth = FALSE,
                   lengthMenu = c(10, 100, 1000, 10000)),
@@ -904,13 +913,15 @@ output$data_uploaded <- renderDataTable(
 ########### Caluclate stats for the MEAN ############
 
 df_summary_mean <- reactive({
-  koos <- df_selected()
-  koos$Condition <- factor(koos$Condition)
+  koos <- df_sorted()
+  # koos <- df_selected()
+  # koos$Condition <- factor(koos$Condition)
 
   koos %>%
     group_by(Condition) %>% 
     summarise(n = n(),
             mean = mean(Value, na.rm = TRUE),
+            geom_mean = geom_mean(Value),
 #            median = median(Value, na.rm = TRUE),
             sd = sd(Value, na.rm = TRUE)) %>%
       mutate(sem = sd / sqrt(n - 1),
@@ -923,8 +934,8 @@ df_summary_mean <- reactive({
 
 df_summary_median <- reactive({
     
-    kees <- df_selected()
-    kees$Condition <- factor(kees$Condition)
+    kees <- df_sorted()
+    # kees$Condition <- factor(kees$Condition)
  
  #   df_booted <- data.frame(Condition=levels(factor(kees$Condition)), n=tapply(kees$Value, kees$Condition, length), median=tapply(kees$Value, kees$Condition, median))
     df_booted <- kees %>%
@@ -1174,6 +1185,17 @@ plotdata <- reactive({
     
     }
 
+    else if (input$summaryInput == "geom_mean") {
+      # p <- p + stat_summary(data=df_selected(), aes_string(x="Condition", y=y_choice), fun.y = geom_mean, fun.ymin = geom_mean, fun.ymax = geom_mean, geom = "crossbar", size=.8, width=width_column, color = "black",fill="black", alpha=input$alphaInput_summ/2)
+      p <- p + geom_errorbar(data=df_summary_mean(), aes_string(x="Condition", ymin="geom_mean", ymax="geom_mean", colour=kleur_stats), width=width_column, size=1, alpha=input$alphaInput_summ)
+      
+      }
+    
+    
+    
+    
+    
+    
     else if (input$summaryInput == "median"  && min_n<10) {
       p <-  p + geom_errorbar(data=df_summary_median(), aes_string(x="Condition", ymin="median", ymax="median", colour = kleur_stats), width=width_column, size=1, alpha=input$alphaInput_summ)
 
@@ -1215,7 +1237,10 @@ plotdata <- reactive({
     }
     
     
-    
+    if (input$add_SD) {
+      p <- p + geom_errorbar(data=df_summary_mean(), aes_string(x="Condition", ymin="mean-sd", ymax="mean+sd", colour=kleur_stats), width=width_column/2, size=1, alpha=input$alphaInput_summ)
+    }
+      
     
 
 
@@ -1324,15 +1349,16 @@ df_filtered_stats <- reactive({
   
   #Combine the numbers from the 95% CI for the mean to show the interval
   klaas <- df_summary_mean() %>% mutate(mean_CI_lo = round(mean_CI_lo, digits), mean_CI_hi = round(mean_CI_hi, digits)) %>% unite("95CI mean", c("mean_CI_lo","mean_CI_hi"), sep=" - ")
-  observe({ print((klaas)) }) 
+  # observe({ print((klaas)) }) 
   
   #Combine the numbers from the 95% CI for the median to show the interval
   koos <- df_summary_median() %>% mutate(median_CI_lo = round(median_CI_lo, digits), median_CI_hi = round(median_CI_hi, digits)) %>% unite("95CI median", c("median_CI_lo","median_CI_hi"), sep=" - ")
     
-  klaas  <- full_join(klaas, koos,by="Condition")
+  klaas  <- left_join(klaas, koos,by="Condition")
 
     # Round down to the number of selected digits
-    klaas <- klaas %>% mutate_at(c(3:5, 7:11), round, input$digits)
+    klaas <- klaas %>% mutate_at(c(3:6, 8:12), round, input$digits)
+    
 
   ##### Show the statistics selected by the user ############  
     
