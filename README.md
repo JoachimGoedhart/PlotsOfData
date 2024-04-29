@@ -15,7 +15,7 @@ The plot can be saved as a PDF file, which can be opened and edited with Adobe I
 
 ### Running the App
 
-The app is available online: [https://huygens.science.uva.nl/PlotsOfData/](https://huygens.science.uva.nl/PlotsOfData/)
+The app is available online: [https://huygens.science.uva.nl/PlotsOfData/](https://huygens.science.uva.nl/PlotsOfData/) or [https://amsterdamstudygroup.shinyapps.io/PlotsOfData/](https://amsterdamstudygroup.shinyapps.io/PlotsOfData/)
 
 But you can also run it offline in R/Rstudio. In the command line (in R or Rstudio) type
 shiny::runGitHub('PlotsOfData', 'JoachimGoedhart')
